@@ -3,11 +3,11 @@ from __future__ import annotations
 import math
 from typing import Dict, List, Optional, Tuple
 
-from titan_env.core.environment.titan_env import TITANEnv as CoreTITANEnv
-from titan_env.core.rewards.reward_v2 import compute_reward as compute_reward_v2
+from TITAN_env.core.environment.TITAN_env import TITANEnv as CoreTITANEnv
+from TITAN_env.core.rewards.reward_v2 import compute_reward as compute_reward_v2
 
-from titan_env.interface.action_mapping import discrete_from_command
-from titan_env.interface.models import Action, Observation, Reward
+from TITAN_env.interface.action_mapping import discrete_from_command
+from TITAN_env.interface.models import Action, Observation, Reward
 
 
 class TITANEnv:

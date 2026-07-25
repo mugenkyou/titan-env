@@ -37,7 +37,7 @@ import numpy as np
 import gymnasium as gym
 from gymnasium import spaces
 
-from .titan_env import TITANEnv
+from .TITAN_env import TITANEnv
 from .state_model import SubsystemState, StateBounds
 from .fault_injection import FaultInjector, RadiationProfile
 from .actions import ActionType, ACTION_COSTS

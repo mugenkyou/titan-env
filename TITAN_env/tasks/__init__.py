@@ -1,7 +1,7 @@
-from titan_env.tasks.task_easy import EASY_TASK
-from titan_env.tasks.task_medium import MEDIUM_TASK
-from titan_env.tasks.task_hard import HARD_TASK, HardMultiFaultSurvivalTask
-from titan_env.tasks.registry import (
+from TITAN_env.tasks.task_easy import EASY_TASK
+from TITAN_env.tasks.task_medium import MEDIUM_TASK
+from TITAN_env.tasks.task_hard import HARD_TASK, HardMultiFaultSurvivalTask
+from TITAN_env.tasks.registry import (
     TaskBundle,
     available_task_names,
     get_grader,

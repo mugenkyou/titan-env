@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Dict, Tuple, Union
 
-from titan_env.core.environment.actions import ActionType, ACTION_COSTS
+from TITAN_env.core.environment.actions import ActionType, ACTION_COSTS
 
 
 W1_UPTIME: float = 1.5

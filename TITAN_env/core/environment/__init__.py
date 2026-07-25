@@ -1,5 +1,5 @@
 from .state_model import SubsystemState, StateBounds, StateTransition
-from .titan_env import TITANEnv
+from .TITAN_env import TITANEnv
 from .fault_injection import (
     FaultType,
     FaultEvent,
