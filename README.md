@@ -30,6 +30,19 @@ openenv validate
 python inference.py
 ```
 
+### Curriculum RL Training (Colab / GPU)
+
+```bash
+pip install sb3-contrib
+python training/train_ppo.py \
+  --algo recurrent_ppo \
+  --curriculum-profiles low medium high \
+  --phase-timesteps 200000 \
+  --reward-version v3 \
+  --seed 42 \
+  --save-path models/lstm_ppo_v3_curriculum_seed42
+```
+
 ## Tasks
 
 - **easy_single_fault_recovery** — Recover onboard memory after radiation-induced corruption before critical data loss. Goal: memory_integrity > 0.9 within 30 steps.
