@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TITAN — Agent decision</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='50' font-size='48'%3E%F0%9F%A7%AD%3C/text%3E%3C/svg%3E"
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        min-height: 100vh;
+        font-family: "Segoe UI", system-ui, sans-serif;
+        background: #0a0e14;
+        color: #e8f0f8;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        padding-top: 56px;
+      }
+      #decision-nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px 16px;
+        padding: 12px 18px;
+        background: rgba(8, 12, 20, 0.92);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        z-index: 10;
+      }
+      #decision-nav a {
+        font-size: 13px;
+        color: #7ab8ff;
+        text-decoration: none;
+      }
+      #decision-nav a:hover {
+        text-decoration: underline;
+      }
+      #decision-nav a[aria-current="page"] {
+        color: #c8e4ff;
+        font-weight: 600;
+        pointer-events: none;
+      }
+      #decision-nav .sep {
+        color: #4a5568;
+        user-select: none;
+      }
+      #decision-root {
+        width: 100%;
+        max-width: 520px;
+        padding: 28px 32px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(18, 26, 38, 0.95);
+        font-size: 20px;
+        line-height: 1.45;
+      }
+      #decision-root.tone-blue {
+        border-color: rgba(80, 160, 255, 0.45);
+        box-shadow: 0 0 40px rgba(40, 120, 255, 0.12);
+      }
+      #decision-root.tone-green {
+        border-color: rgba(80, 220, 140, 0.45);
+        box-shadow: 0 0 40px rgba(40, 200, 100, 0.1);
+      }
+      #decision-root.tone-gray {
+        border-color: rgba(140, 150, 165, 0.35);
+      }
+      #decision-root.tone-red {
+        border-color: rgba(255, 100, 100, 0.5);
+        box-shadow: 0 0 36px rgba(255, 60, 60, 0.12);
+      }
+      .hdr {
+        font-size: 26px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        margin-bottom: 22px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .sec {
+        margin-top: 18px;
+      }
+      .sec h2 {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        color: #8a9bb0;
+        margin-bottom: 8px;
+        font-weight: 600;
+      }
+      .sec pre,
+      .sec p {
+        font-family: inherit;
+        font-size: 19px;
+        white-space: pre-wrap;
+        word-break: break-word;
+        color: #dce6f0;
+      }
+      #conn {
+        position: fixed;
+        bottom: 14px;
+        right: 16px;
+        font-size: 12px;
+        color: #6a7a8c;
+      }
+      #conn.live {
+        color: #5cdb8f;
+      }
+    </style>
+  </head>
+  <body>
+    <nav id="decision-nav" aria-label="App pages">
+      <a href="/">Simulation</a>
+      <span class="sep">|</span>
+      <a href="/analysis.html">Analysis</a>
+      <span class="sep">|</span>
+      <a href="/decision.html" aria-current="page">Decision</a>
+    </nav>
+    <div id="decision-root" class="tone-gray">
+      <div class="hdr" id="el-header">STEP — [—]</div>
+      <div class="sec">
+        <h2>Observation</h2>
+        <pre id="el-obs">—</pre>
+      </div>
+      <div class="sec">
+        <h2>Uncertainty</h2>
+        <p id="el-unc">—</p>
+      </div>
+      <div class="sec">
+        <h2>Action</h2>
+        <p id="el-action">—</p>
+      </div>
+      <div class="sec">
+        <h2>Reason</h2>
+        <p id="el-reason">—</p>
+      </div>
+    </div>
+    <p id="conn">Connecting…</p>
+    <script type="module" src="/src/decision.ts"></script>
+  </body>
+</html>

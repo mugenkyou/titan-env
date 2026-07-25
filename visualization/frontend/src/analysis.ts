@@ -1,4 +1,5 @@
 import { WebSocketClient } from "./connection/WebSocketClient";
+import { wsBackendUrl } from "./utils/wsBackendUrl";
 
 type FaultKey = "seu" | "latchup" | "thermal" | "memory" | "power";
 
@@ -182,7 +183,7 @@ const chartRadiation = mustCanvas("chart-radiation");
 const chartDegradation = mustCanvas("chart-degradation");
 const chartCausal = mustCanvas("chart-causal");
 
-const wsClient = new WebSocketClient("ws://localhost:8000/ws");
+const wsClient = new WebSocketClient(wsBackendUrl());
 
 wsClient.onConnect(() => {
   wsStatus.textContent = "ONLINE";

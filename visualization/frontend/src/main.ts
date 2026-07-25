@@ -19,6 +19,20 @@ import {
   updateStatsUI,
 } from "./ui/TelemetryPanel";
 import { initChart, addChartData, resetChart } from "./ui/FaultRecoveryChart";
+import {
+  configureSimulationLoop,
+  startLoop,
+  stopLoop,
+  updateSpeed,
+  type SimMode,
+} from "./simulationLoop";
+import { wsBackendUrl } from "./utils/wsBackendUrl";
+
+function getActionId(data: Record<string, unknown>): number | undefined {
+  if (typeof data.action_id === "number") return data.action_id;
+  if (typeof data.action === "number") return data.action;
+  return undefined;
+}
 
 // Scene setup
 const scene = new THREE.Scene();
@@ -327,6 +341,7 @@ let satelliteState: SatelliteState = {
 // Simulation state
 let isPaused = false;
 let simSpeed = 1;
+let simMode: SimMode = "manual";
 let orbitAngle = 0;
 let currentProfile = "none";
 
@@ -378,9 +393,16 @@ async function toggleBackgroundMusic() {
 initChart();
 
 // WebSocket connection
-const wsClient = new WebSocketClient("ws://localhost:8000/ws");
+const wsClient = new WebSocketClient(wsBackendUrl());
+
+configureSimulationLoop({
+  ws: wsClient,
+  getSpeed: () => simSpeed,
+  getMode: () => simMode,
+});
 
 wsClient.onMessage((data) => {
+  const actionId = getActionId(data as Record<string, unknown>);
   // Debug: log all incoming data
   if (data.faults) {
     const activeFaults = Object.entries(data.faults)
@@ -411,18 +433,18 @@ wsClient.onMessage((data) => {
   // Track fault injection for chart
   let injectedFaultType: string | undefined = undefined;
 
-  if (data.action !== undefined) {
-    satelliteState.action = data.action;
-    const actionName = data.action_name || "";
+  if (actionId !== undefined) {
+    satelliteState.action = actionId;
+    const actionName = String(data.action_name || data.action || "");
 
     // Check if this is a fault injection (special action -1 or name contains INJECTED)
-    if (actionName.includes("INJECTED") || data.action === -1) {
+    if (actionName.includes("INJECTED") || actionId === -1) {
       injectedFaultType = actionName
         .replace("⚡ ", "")
         .replace(" INJECTED", "");
       addActionLog(
         data.step,
-        data.action_name || data.action,
+        actionName,
         data.reason || "",
       );
       console.log(`🔴 FAULT INJECTED: ${injectedFaultType}`);
@@ -431,13 +453,13 @@ wsClient.onMessage((data) => {
     // increment the recovered counter here. The backend is the source of
     // truth and now broadcasts `faults_recovered` (only credited when the
     // action actually matches the active fault type).
-    else if (data.action > 0 && data.action <= 6) {
+    else if (actionId > 0 && actionId <= 6) {
       addActionLog(
         data.step,
-        data.action_name || data.action,
+        actionName,
         data.reason || "causal_rl",
       );
-      console.log(`🟢 RECOVERY ACTION: ${actionName} (action=${data.action})`);
+      console.log(`🟢 RECOVERY ACTION: ${actionName} (action=${actionId})`);
     }
     // Skip logging NO_ACTION to reduce spam
   }
@@ -464,7 +486,7 @@ wsClient.onMessage((data) => {
   if (data.step !== undefined) {
     const faultCount = Object.values(data.faults || {}).filter((v) => v).length;
     const isRecoveryAction =
-      data.action !== undefined && data.action > 0 && data.action <= 6;
+      actionId !== undefined && actionId > 0 && actionId <= 6;
     const reward = data.reward || 0;
 
     // Debug logging for chart data
@@ -497,10 +519,16 @@ wsClient.onMessage((data) => {
 wsClient.onConnect(() => {
   console.log("Connected to TITAN backend");
   hideLoading();
+  // Single-writer stepping: keep server broadcast idle; AUTO uses client step.
+  wsClient.send({ action: "pause" });
+  if (simMode === "auto") {
+    startLoop();
+  }
 });
 
 wsClient.onDisconnect(() => {
   console.log("Disconnected from backend - running in demo mode");
+  stopLoop();
   hideLoading();
 });
 
@@ -542,51 +570,74 @@ function hideLoading() {
   }, 2000);
 }
 
-// UI Controls
-document.getElementById("btn-pause")?.addEventListener("click", () => {
-  isPaused = !isPaused;
-  const btn = document.getElementById("btn-pause");
-  if (btn) btn.textContent = isPaused ? "▶" : "⏸";
-  wsClient.send({ action: isPaused ? "pause" : "resume" });
-});
+function syncSpeedWidgets(): void {
+  const sel = document.getElementById("ctrl-speed") as HTMLSelectElement | null;
+  if (sel) sel.value = String(simSpeed);
+}
 
-document.getElementById("btn-speed")?.addEventListener("click", () => {
-  const speeds = [0.5, 1, 2, 4];
-  const idx = speeds.indexOf(simSpeed);
-  simSpeed = speeds[(idx + 1) % speeds.length];
-  const btn = document.getElementById("btn-speed");
-  if (btn) btn.textContent = simSpeed + "x";
-  wsClient.send({ action: "set_speed", speed: simSpeed });
-});
+function syncScenarioWidgets(): void {
+  const sel = document.getElementById("ctrl-scenario") as HTMLSelectElement | null;
+  if (sel) sel.value = currentProfile;
+}
 
-document.getElementById("btn-reset")?.addEventListener("click", () => {
+function applyScenario(profile: string): void {
+  currentProfile = profile;
+  syncScenarioWidgets();
+  updateRadiationProfile(currentProfile);
+  wsClient.send({ action: "reset", profile: currentProfile });
+  satelliteState.step = 0;
+  satelliteState.totalReward = 0;
+  satelliteState.faultsRecovered = 0;
+  resetChart();
+}
+
+function doReset(): void {
   wsClient.send({ action: "reset", profile: currentProfile });
   satelliteState.step = 0;
   satelliteState.totalReward = 0;
   satelliteState.faultsRecovered = 0;
   satelliteState.episode++;
   resetChart();
+}
+
+syncSpeedWidgets();
+syncScenarioWidgets();
+
+// UI Controls
+document.getElementById("btn-pause")?.addEventListener("click", () => {
+  isPaused = !isPaused;
+  const btn = document.getElementById("btn-pause");
+  if (btn) btn.textContent = isPaused ? "▶" : "⏸";
+});
+
+document.getElementById("ctrl-mode")?.addEventListener("change", (e) => {
+  const v = (e.target as HTMLSelectElement).value;
+  simMode = v === "auto" ? "auto" : "manual";
+  wsClient.send({ action: "pause" });
+  if (simMode === "auto") {
+    startLoop();
+  } else {
+    stopLoop();
+  }
+});
+
+document.getElementById("ctrl-speed")?.addEventListener("change", (e) => {
+  simSpeed = parseFloat((e.target as HTMLSelectElement).value) || 1;
+  syncSpeedWidgets();
+  wsClient.send({ action: "set_speed", speed: simSpeed });
+  updateSpeed();
+});
+
+document.getElementById("ctrl-reset")?.addEventListener("click", () => {
+  doReset();
+});
+
+document.getElementById("ctrl-scenario")?.addEventListener("change", (e) => {
+  applyScenario((e.target as HTMLSelectElement).value);
 });
 
 document.getElementById("btn-music")?.addEventListener("click", () => {
   void toggleBackgroundMusic();
-});
-
-// Profile selector
-document.getElementById("profile-select")?.addEventListener("change", (e) => {
-  const select = e.target as HTMLSelectElement;
-  currentProfile = select.value;
-  console.log(`🌌 Radiation profile changed to: ${currentProfile}`);
-
-  // Update radiation visual effects
-  updateRadiationProfile(currentProfile);
-
-  // Reset with new profile
-  wsClient.send({ action: "reset", profile: currentProfile });
-  satelliteState.step = 0;
-  satelliteState.totalReward = 0;
-  satelliteState.faultsRecovered = 0;
-  resetChart();
 });
 
 // Individual fault injection buttons

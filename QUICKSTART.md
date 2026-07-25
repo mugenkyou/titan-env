@@ -6,8 +6,67 @@ This document is the **complete** path from an empty machine to a running 3D Ear
 
 ---
 
+## 0. Run GRPO + web UI (first success)
+
+Goal: **backend loads Diagnostic + Recovery agents** (GRPO adapter) and the **Vite frontend** talks to **`ws://<host>:8000/ws`** — same stack for the main dashboard, **Decision**, and **Analysis** pages.
+
+### Checklist before `python server/run.py`
+
+| Requirement | Why |
+|---------------|-----|
+| **`grpo_qwen3_final/`** at repo root with `adapter_config.json` + weights | LoRA GRPO policy; without it, startup may error or degrade depending on code path. |
+| **`TITAN_FAST_MODE` unset** | If set to `1`, the server **never loads** the LLM — heuristics only. For GRPO, remove it from the environment. |
+| **CUDA `torch` (GPU)** or patience (CPU) | GPU: seconds per LLM step typical. CPU: often **30–60+ s** per LLM step; use `TITAN_FAST_MODE=1` for UI dev without waiting. |
+| **`pip install -r requirements.txt`** + **`npm install`** in `visualization/frontend` | Python deps + frontend dev server. |
+
+### One command (repo root, recommended)
+
+**Windows PowerShell** (venv activated; use `py -3.12` if needed):
+
+```powershell
+Remove-Item Env:TITAN_FAST_MODE -ErrorAction SilentlyContinue
+python server/run.py
+```
+
+**macOS / Linux:**
+
+```bash
+unset TITAN_FAST_MODE
+python server/run.py
+```
+
+This runs **Uvicorn** on **`http://127.0.0.1:8000`** (WebSocket **`/ws`**) and spawns **`npm run dev`** for **`http://localhost:5173`**. First LLM load can take **30s–2min**; first-time **Qwen3-1.7B** download can take longer (see §9).
+
+Wait for console lines like **`[OK] Agents attached.`** and **`[OK] Broadcast loop + LLM worker started`**. Then use the browser UI; switch simulation to **Auto** in the top bar if you want continuous client-driven steps while the agents run on faults (hybrid policy — §13).
+
+### Heuristic-only (no GRPO load)
+
+Useful when you only need the 3D UI and env stepping without GPU memory or downloads:
+
+```powershell
+$env:TITAN_FAST_MODE = "1"
+python server/run.py
+```
+
+### Two terminals (manual), same model
+
+```powershell
+# Terminal 1 — backend only (from repo root)
+Remove-Item Env:TITAN_FAST_MODE -ErrorAction SilentlyContinue
+python visualization/backend/server.py
+
+# Terminal 2 — frontend
+cd visualization/frontend
+npm run dev
+```
+
+Open **http://localhost:5173**. The frontend discovers the WebSocket host from the browser URL and uses **port 8000** for `/ws` (see `visualization/frontend/src/utils/wsBackendUrl.ts`).
+
+---
+
 ## Contents
 
+0. [Run GRPO + web UI (first success)](#0-run-grpo--web-ui-first-success)  
 1. [Hardware and OS assumptions](#1-hardware-and-os-assumptions)  
 2. [Install system prerequisites](#2-install-system-prerequisites)  
 3. [Clone the repository](#3-clone-the-repository)  
@@ -355,6 +414,23 @@ This starts:
 2. **Vite** dev server for the Three.js UI — **`http://localhost:5173`**.  
 3. Opens the browser when both ports respond (unless disabled).
 
+### 12.1 Full GRPO / hybrid (default)
+
+- Do **not** set `TITAN_FAST_MODE`.  
+- On startup the backend loads **Unsloth** (if available) or **transformers + PEFT** with **`grpo_qwen3_final/`** and attaches **DiagnosticAgent** + **RecoveryAgent**.  
+- **Hybrid:** quiet telemetry steps can stay fast; when faults queue, the **LLM worker** runs GRPO Qwen3 recovery (see comments in `visualization/backend/server.py`).  
+- Optional: `TITAN_ALWAYS_LLM=1` forces an LLM pass every step (heavy).
+
+### 12.2 Frontend + backend together
+
+| URL | Role |
+|-----|------|
+| `http://localhost:5173/` | Main Three.js dashboard (`index.html`) |
+| `http://localhost:5173/decision.html` | Decision view (`decision.html`) |
+| `http://localhost:5173/analysis.html` | Analysis console |
+
+All of the above use the **same** WebSocket backend on **port 8000** once the Python process is up.
+
 **Backend only** (no npm / no browser):
 
 ```powershell
@@ -362,13 +438,15 @@ $env:TITAN_NO_FRONTEND = "1"
 python visualization/backend/server.py
 ```
 
+You can still run **`npm run dev`** manually in `visualization/frontend` in a second terminal.
+
 ---
 
 ## 13. Environment variables reference
 
 | Variable | Values | Effect |
 |----------|--------|--------|
-| `TITAN_FAST_MODE` | `1` | No LLM load; **heuristic** policy only. Fast UI. |
+| `TITAN_FAST_MODE` | `1` | **Skips GRPO/LLM entirely** — no model load; **heuristic** policy only. **Unset** this variable for full GRPO agents. |
 | `TITAN_ALWAYS_LLM` | `1` | Run the LLM on **every** step (slow unless GPU + good stack). |
 | `TITAN_NO_FRONTEND` | `1` | `server/run.py` does not spawn `npm run dev`. |
 | `TITAN_NO_BROWSER` | `1` | Do not auto-open a browser tab. |
@@ -404,6 +482,7 @@ Default behaviour (no `TITAN_FAST_MODE`): **hybrid** — quiet steps use heurist
 
 | Symptom | Likely cause | What to do |
 |---------|----------------|------------|
+| Console shows **FAST_MODE** / “skipping LLM” | `TITAN_FAST_MODE=1` in environment | Unset: `Remove-Item Env:TITAN_FAST_MODE` (PowerShell) or `unset TITAN_FAST_MODE` (bash), then restart the backend. |
 | `torch.cuda.is_available()` is `False` but you have an NVIDIA GPU | CPU-only `torch` installed | Uninstall `torch`, reinstall from **cu128** index (§6). |
 | `OSError` / “Application Control policy” loading `c10.dll` (Windows) | Smart App Control / WDAC blocking PyTorch | Use WSL2, different Python install path, or adjust Windows policy per your org’s rules. |
 | First startup **downloads for a long time** | Normal: **`Qwen/Qwen3-1.7B`** cache fill | Wait, or prefetch (§9.3). Ensure disk space. |
@@ -436,6 +515,9 @@ pip install unsloth                       # optional, GPU 4-bit path
 
 cd visualization/frontend && npm install && cd ../..
 
+# Full GRPO + UI (ensure FAST_MODE is off)
+Remove-Item Env:TITAN_FAST_MODE -ErrorAction SilentlyContinue   # Windows
+# unset TITAN_FAST_MODE                                          # Linux / macOS
 python server/run.py
 ```
 

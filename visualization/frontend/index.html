@@ -425,54 +425,6 @@
         background: #ffaa00;
       }
 
-      /* Profile Selector */
-      #profile-panel {
-        position: fixed;
-        top: 80px;
-        right: 240px;
-        background: rgba(30, 20, 50, 0.9);
-        border: 1px solid rgba(180, 100, 255, 0.4);
-        border-radius: 10px;
-        padding: 12px 15px;
-        color: #fff;
-        backdrop-filter: blur(10px);
-        z-index: 1000;
-      }
-
-      #profile-panel label {
-        font-size: 11px;
-        color: #c8f;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        display: block;
-        margin-bottom: 6px;
-      }
-
-      #profile-select {
-        background: rgba(0, 0, 0, 0.5);
-        border: 2px solid rgba(180, 100, 255, 0.5);
-        border-radius: 6px;
-        color: #fff;
-        padding: 8px 12px;
-        font-size: 12px;
-        font-family: "Consolas", monospace;
-        cursor: pointer;
-        min-width: 140px;
-        outline: none;
-        transition: all 0.2s ease;
-      }
-
-      #profile-select:hover {
-        border-color: #c8f;
-        box-shadow: 0 0 10px rgba(180, 100, 255, 0.3);
-      }
-
-      #profile-select option {
-        background: #1a1030;
-        color: #fff;
-        padding: 5px;
-      }
-
       /* Controls */
       #controls {
         position: fixed;
@@ -550,6 +502,71 @@
         color: #888;
         font-size: 14px;
       }
+
+      /* Phase 1 simulation control bar */
+      #top-sim-bar {
+        position: fixed;
+        top: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1001;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px 14px;
+        padding: 8px 14px;
+        background: rgba(10, 20, 40, 0.9);
+        border: 1px solid rgba(0, 180, 255, 0.35);
+        border-radius: 8px;
+        color: #e8f4ff;
+        font-size: 12px;
+        font-family: "Segoe UI", system-ui, sans-serif;
+      }
+      #top-sim-bar label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+      }
+      #top-sim-bar select {
+        background: rgba(0, 0, 0, 0.45);
+        border: 1px solid rgba(0, 180, 255, 0.4);
+        border-radius: 4px;
+        color: #fff;
+        padding: 4px 8px;
+        font-size: 11px;
+      }
+      #top-sim-bar button#ctrl-reset {
+        padding: 4px 12px;
+        border-radius: 4px;
+        border: 1px solid rgba(255, 200, 100, 0.5);
+        background: rgba(60, 40, 0, 0.6);
+        color: #fc8;
+        cursor: pointer;
+        font-size: 11px;
+      }
+      #top-sim-bar button#ctrl-reset:hover {
+        background: rgba(90, 60, 0, 0.75);
+      }
+      #ctrl-explain {
+        accent-color: #0af;
+      }
+      #top-sim-bar .top-sim-links {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-left: 6px;
+        padding-left: 12px;
+        border-left: 1px solid rgba(255, 255, 255, 0.15);
+      }
+      #top-sim-bar .top-sim-links a {
+        color: #8ec8ff;
+        font-size: 11px;
+        text-decoration: none;
+      }
+      #top-sim-bar .top-sim-links a:hover {
+        text-decoration: underline;
+      }
     </style>
   </head>
   <body>
@@ -558,6 +575,45 @@
       <div class="loading-spinner"></div>
       <h1>TITAN</h1>
       <p>Initializing Earth-Satellite Simulation...</p>
+    </div>
+
+    <!-- Phase 1: simulation mode / speed (client AUTO loop) -->
+    <div id="top-sim-bar">
+      <label>
+        Mode
+        <select id="ctrl-mode" title="Simulation stepping mode">
+          <option value="manual" selected>Manual</option>
+          <option value="auto">Auto</option>
+        </select>
+      </label>
+      <label>
+        Speed
+        <select id="ctrl-speed" title="Steps per second scale">
+          <option value="0.5">0.5x</option>
+          <option value="1" selected>1x</option>
+          <option value="2">2x</option>
+          <option value="4">4x</option>
+        </select>
+      </label>
+      <button type="button" id="ctrl-reset" title="Reset episode">Reset</button>
+      <label>
+        Scenario
+        <select id="ctrl-scenario" title="Radiation / fault scenario">
+          <option value="none">None (manual only)</option>
+          <option value="low">Low radiation</option>
+          <option value="medium">Medium radiation</option>
+          <option value="high">High radiation</option>
+          <option value="storm">Solar storm</option>
+        </select>
+      </label>
+      <label>
+        <input type="checkbox" id="ctrl-explain" title="Reserved for future explain mode" />
+        Explain
+      </label>
+      <span class="top-sim-links">
+        <a href="/decision.html" id="nav-decision" title="Agent decision view">Decision</a>
+        <a href="/analysis.html" title="Analysis console">Analysis</a>
+      </span>
     </div>
 
     <!-- 3D Canvas -->
@@ -683,23 +739,9 @@
       </div>
     </div>
 
-    <!-- Radiation Profile Selector -->
-    <div id="profile-panel">
-      <label>🌌 Radiation Profile</label>
-      <select id="profile-select">
-        <option value="none" selected>None (Manual Only)</option>
-        <option value="low">Low Radiation</option>
-        <option value="medium">Medium Radiation</option>
-        <option value="high">High Radiation</option>
-        <option value="storm">Solar Storm</option>
-      </select>
-    </div>
-
-    <!-- Controls -->
+    <!-- Controls (orbit / music only — sim speed & reset are in the top bar) -->
     <div id="controls">
       <button class="control-btn" id="btn-pause" title="Pause/Resume">⏸</button>
-      <button class="control-btn" id="btn-speed" title="Speed">4x</button>
-      <button class="control-btn" id="btn-reset" title="Reset">↺</button>
       <button class="control-btn" id="btn-music" title="Play Music">🔇</button>
     </div>
 

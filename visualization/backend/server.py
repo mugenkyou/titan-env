@@ -865,6 +865,66 @@ class SimulationManager:
 sim = SimulationManager()
 sim_lock = asyncio.Lock()
 app = FastAPI(title="TITAN Visualization Backend (LLM)")
+
+
+def finalize_ws_payload(payload: dict) -> dict:
+    """Ensure every outbound WS JSON includes stable Phase-1 keys.
+
+    Adds observation, uncertainty, string action, and numeric action_id
+    without removing existing fields clients already rely on.
+    """
+    if not payload:
+        return payload
+    p = payload
+
+    if "step" not in p:
+        p["step"] = int(sim.step_count)
+    if "reward" not in p:
+        p["reward"] = 0.0
+    if "reason" not in p:
+        p["reason"] = ""
+
+    obs: dict = {}
+    if sim.last_obs is not None:
+        try:
+            obs["vector"] = np.asarray(sim.last_obs, dtype=float).tolist()
+        except Exception:  # noqa: BLE001
+            obs["vector"] = []
+    if "telemetry" in p:
+        obs["telemetry"] = p["telemetry"]
+    if "faults" in p:
+        obs["faults"] = p["faults"]
+    p["observation"] = obs
+
+    belief = p.get("belief")
+    if not isinstance(belief, dict):
+        belief = dict(sim.last_belief) if sim.last_belief else {}
+    sev = belief.get("severity", 1)
+    try:
+        sev_int = int(sev)
+    except (TypeError, ValueError):
+        sev_int = 1
+    p["uncertainty"] = {
+        "confidence": str(belief.get("confidence", "low")),
+        "severity": sev_int,
+        "fault": str(belief.get("fault", "none")),
+    }
+
+    raw_action = p.get("action")
+    name = p.get("action_name")
+    if isinstance(raw_action, int):
+        p["action_id"] = int(raw_action)
+        if not name:
+            try:
+                name = ActionType(raw_action).name
+            except Exception:  # noqa: BLE001
+                name = str(raw_action)
+    else:
+        p["action_id"] = int(p.get("action_id", 0))
+    p["action"] = str(name or "NO_ACTION")
+    p["action_name"] = str(name or "NO_ACTION")
+
+    return p
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -890,10 +950,11 @@ class ConnectionManager:
     async def broadcast(self, payload: dict) -> None:
         if not self.clients:
             return
+        out = finalize_ws_payload(payload)
         dead: Set[WebSocket] = set()
         for client in self.clients:
             try:
-                await client.send_json(payload)
+                await client.send_json(out)
             except Exception:  # noqa: BLE001
                 dead.add(client)
         for client in dead:
@@ -954,8 +1015,9 @@ async def llm_worker_loop() -> None:
     print("[llm] background worker started.")
     while True:
         await asyncio.sleep(0.5)
-        if not sim.running:
-            continue
+        # Do NOT gate on sim.running: the UI often sends `pause` so the
+        # server broadcast loop does not double-step with client AUTO mode.
+        # Recovery still needs the GRPO worker to fill `_pending_llm`.
         if sim.env is None:
             continue
         if sim._pending_llm is not None:
@@ -1040,7 +1102,7 @@ async def websocket_endpoint(ws: WebSocket) -> None:
         if sim.env is None:
             sim.reset("none")
         snapshot = sim._build_state()
-    await ws.send_json(snapshot)
+    await ws.send_json(finalize_ws_payload(snapshot))
 
     try:
         while True:
