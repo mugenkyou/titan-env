@@ -1,12 +1,3 @@
----
-title: TITAN — Autonomous Fault Recovery Benchmark for Satellites
-emoji: 🛰️
-colorFrom: blue
-colorTo: purple
-sdk: docker
-pinned: false
----
-
 
 
 # TITAN Env
