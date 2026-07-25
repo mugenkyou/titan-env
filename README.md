@@ -6,6 +6,8 @@
 
 > Proprietary software. See [LICENSE](./LICENSE).
 
+**New to this repo?** Use **[QUICKSTART.md](./QUICKSTART.md)** for a single page of what to install (Python, PyTorch, Node/npm — **not Ollama**) and the exact commands to run the 3D dashboard (`python server/run.py`).
+
 ## What It Does
 
 - Simulates satellite subsystem faults (SEU, thermal, latch-up, memory corruption)
