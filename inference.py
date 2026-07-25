@@ -13,12 +13,27 @@ from TITAN_env.tasks.registry import available_task_names, resolve_task_bundle
 
 ENV_NAME = "TITAN_env.interface.openenv_wrapper.TITANEnv"
 
-# MANDATORY submission variables (per competition requirements).
-# Defaults are set for API_BASE_URL and MODEL_NAME per spec.
-LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
-API_BASE_URL = os.getenv("API_BASE_URL") or "https://api.openai.com/v1"
-MODEL_NAME = os.getenv("MODEL_NAME") or "gpt-4o-mini"
-HF_TOKEN = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
+
+def _load_local_env_file(filename: str = "local.env") -> None:
+    """Load simple KEY=VALUE pairs from local.env if present."""
+    path = os.path.join(os.getcwd(), filename)
+    if not os.path.exists(path):
+        return
+
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            for raw_line in handle:
+                line = raw_line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                key = key.strip()
+                value = value.strip().strip('"').strip("'")
+                if key and key not in os.environ:
+                    os.environ[key] = value
+    except Exception:
+        # local.env loading is best-effort and should not block inference.
+        return
 
 
 def _normalize_dict(model: Any) -> Dict[str, Any]:
@@ -197,13 +212,23 @@ def main() -> int:
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
+    if os.getenv("TITAN_DISABLE_LOCAL_ENV", "").lower() not in {"1", "true", "yes"}:
+        _load_local_env_file()
 
-    # Check required environment variables
-    if not HF_TOKEN:
-        raise RuntimeError("HF_TOKEN (or API_KEY) environment variable is required")
-    
-    model = _build_openai_model(API_BASE_URL, MODEL_NAME, HF_TOKEN, args.seed)
-    active_model_name = MODEL_NAME
+    api_base_url = os.getenv("API_BASE_URL") or "https://api.openai.com/v1"
+    model_name = os.getenv("MODEL_NAME") or "gpt-4o-mini"
+    hf_token = os.getenv("HF_TOKEN") or os.getenv("API_KEY") or os.getenv("OPENAI_API_KEY")
+
+    if hf_token:
+        model = _build_openai_model(api_base_url, model_name, hf_token, args.seed)
+        active_model_name = model_name
+    else:
+        # Keep inference executable in environments without credentials.
+        model = _fallback_model
+        active_model_name = "fallback-noop"
+        import sys
+
+        print("[INFO] HF_TOKEN/API_KEY not set. Using fallback-noop policy.", file=sys.stderr)
 
     task_scores: Dict[str, float] = {}
     for task_alias in available_task_names():

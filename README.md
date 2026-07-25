@@ -127,34 +127,50 @@ openenv validate
 
 ## Run Inference
 
+### API Key Configuration
+
+The inference engine supports multiple ways to provide API credentials (tried in order):
+
+1. **local.env file** (recommended for development):
+   ```bash
+   # Create local.env in the project root
+   echo "HF_TOKEN=your-token-here" >> local.env
+   # or
+   echo "OPENAI_API_KEY=sk-..." >> local.env
+   ```
+   The file is automatically loaded at runtime and is git-ignored.
+
+2. **Environment variables** (recommended for CI/production):
+   ```bash
+   export HF_TOKEN="your-token"
+   export OPENAI_API_KEY="sk-..."
+   ```
+
+3. **Override API endpoint** (optional):
+   ```bash
+   export API_BASE_URL="https://api.openai.com/v1"
+   export MODEL_NAME="gpt-4o-mini"
+   ```
+
 ### With LLM Agent (OpenAI)
 
-Set environment variables:
-
-```bash
-# Optional: override API endpoint (defaults to OpenAI)
-export API_BASE_URL="https://api.openai.com/v1"
-# Optional: override model (defaults to gpt-4o-mini)
-export MODEL_NAME="gpt-4o-mini"
-# Required: your HuggingFace or OpenAI API token
-export HF_TOKEN="your-hf-or-api-token"
-# Optional: used only if your env loader needs a docker image name
-export LOCAL_IMAGE_NAME="your-local-image"
-```
-
-Then run:
+Once credentials are set via any method above, run:
 
 ```bash
 python inference.py
 ```
 
+The agent will use your configured API key to call the LLM for policy decisions.
+
 ### Fallback Mode (No API Key)
 
-If API credentials are missing, the script gracefully falls back to a no-op agent:
+If no API credentials are found, inference gracefully activates a built-in fallback agent:
 
 ```bash
-python inference.py  # Uses fallback behavior if OPENAI_API_KEY not set
+python inference.py  # Falls back to no-op policy if credentials are missing
 ```
+
+This allows reproducible offline testing and validation without external dependencies.
 
 ### Output Format
 

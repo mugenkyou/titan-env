@@ -42,6 +42,11 @@ build/
 venv/
 env/
 
+# Local secrets
+local.env
+.env
+.env.*
+
 # Testing / coverage
 .pytest_cache/
 .coverage
