@@ -118,6 +118,8 @@ class ActionEffect:
     memory_scrub:      bool  = False
     thermal_throttle:  float = 0.0
     power_cycle:       bool  = False
+    diagnostic_fault:  str | None = None
+    diagnostic_severity: int = 0
 
     def as_dict(self) -> dict:
         return {
@@ -133,6 +135,8 @@ class ActionEffect:
             "memory_scrub":      self.memory_scrub,
             "thermal_throttle":  self.thermal_throttle,
             "power_cycle":       self.power_cycle,
+            "diagnostic_fault":  self.diagnostic_fault,
+            "diagnostic_severity": int(self.diagnostic_severity),
         }
 
 
@@ -291,12 +295,7 @@ class ActionProcessor:
     @classmethod
     def _no_action(cls, state: SubsystemState, step: int) -> Tuple[SubsystemState, ActionEffect]:
         """No intervention. State unchanged."""
-        new_state = SubsystemState(
-            battery_level=        state.battery_level,
-            temperature=          state.temperature,
-            cpu_health=           state.cpu_health,
-            communication_health= state.communication_health,
-        )
+        new_state = cls._copy_state(state)
         effect = ActionEffect(
             action_type=ActionType.NO_ACTION, step=step,
         )
@@ -313,11 +312,14 @@ class ActionProcessor:
         Best when CPU health is critically low.
         """
         c = _Coefficients
-        new_state = SubsystemState(
-            battery_level=        _clamp(state.battery_level        + c.SR_BATTERY_COST),
-            temperature=          _clamp(state.temperature          + c.SR_TEMP_DELTA),
-            cpu_health=           _clamp(state.cpu_health           + c.SR_CPU_RECOVERY),
-            communication_health= _clamp(state.communication_health + c.SR_COMMS_PENALTY),
+        cpu_load_side_effect = 0.12 if not cls._has_active_faults(state) else 0.0
+        new_state = cls._copy_state(
+            state,
+            battery_level=_clamp(state.battery_level + c.SR_BATTERY_COST),
+            temperature=_clamp(state.temperature + c.SR_TEMP_DELTA),
+            cpu_health=_clamp(state.cpu_health + c.SR_CPU_RECOVERY),
+            communication_health=_clamp(state.communication_health + c.SR_COMMS_PENALTY),
+            cpu_load=_clamp(state.cpu_load + cpu_load_side_effect),
         )
         effect = ActionEffect(
             action_type=ActionType.SUBSYSTEM_RESET, step=step,
@@ -339,11 +341,14 @@ class ActionProcessor:
         Best after SEU events when memory integrity is degraded.
         """
         c = _Coefficients
-        new_state = SubsystemState(
-            battery_level=        _clamp(state.battery_level        + c.MS_BATTERY_COST),
-            temperature=          _clamp(state.temperature          + c.MS_TEMP_DELTA),
-            cpu_health=           _clamp(state.cpu_health           + c.MS_CPU_DELTA),
-            communication_health= _clamp(state.communication_health + c.MS_COMMS_DELTA),
+        power_temp_side_effect = 0.08 if int(getattr(state, "thermal_fault_flag", 0)) else 0.0
+        new_state = cls._copy_state(
+            state,
+            battery_level=_clamp(state.battery_level + c.MS_BATTERY_COST),
+            temperature=_clamp(state.temperature + c.MS_TEMP_DELTA),
+            cpu_health=_clamp(state.cpu_health + c.MS_CPU_DELTA),
+            communication_health=_clamp(state.communication_health + c.MS_COMMS_DELTA),
+            power_temperature=_clamp(state.power_temperature + power_temp_side_effect),
         )
         effect = ActionEffect(
             action_type=ActionType.MEMORY_SCRUB, step=step,
@@ -392,11 +397,14 @@ class ActionProcessor:
         Best after latch-up accumulation or persistent over-current.
         """
         c = _Coefficients
-        new_state = SubsystemState(
-            battery_level=        _clamp(state.battery_level        + c.PC_BATTERY_COST),
-            temperature=          _clamp(state.temperature          + c.PC_TEMP_DELTA),
-            cpu_health=           _clamp(state.cpu_health           + c.PC_CPU_DELTA),
-            communication_health= _clamp(state.communication_health + c.PC_COMMS_PENALTY),
+        cpu_load_side_effect = 0.15 if not int(getattr(state, "power_fault_flag", 0)) else 0.0
+        new_state = cls._copy_state(
+            state,
+            battery_level=_clamp(state.battery_level + c.PC_BATTERY_COST),
+            temperature=_clamp(state.temperature + c.PC_TEMP_DELTA),
+            cpu_health=_clamp(state.cpu_health + c.PC_CPU_DELTA),
+            communication_health=_clamp(state.communication_health + c.PC_COMMS_PENALTY),
+            cpu_load=_clamp(state.cpu_load + cpu_load_side_effect),
         )
         effect = ActionEffect(
             action_type=ActionType.POWER_CYCLE, step=step,
@@ -449,11 +457,15 @@ class ActionProcessor:
         - Small battery cost from isolation relay switching.
         """
         c = _Coefficients
-        new_state = SubsystemState(
-            battery_level=        _clamp(state.battery_level        + c.IS_BATTERY_COST),
-            temperature=          _clamp(state.temperature          + c.IS_TEMP_DELTA),
-            cpu_health=           _clamp(state.cpu_health           + c.IS_CPU_DELTA),
-            communication_health= _clamp(state.communication_health + c.IS_COMMS_PENALTY),
+        severity = cls._fault_severity(state)
+        battery_soc_side_effect = -0.10 if severity < 2 else 0.0
+        new_state = cls._copy_state(
+            state,
+            battery_level=_clamp(state.battery_level + c.IS_BATTERY_COST),
+            temperature=_clamp(state.temperature + c.IS_TEMP_DELTA),
+            cpu_health=_clamp(state.cpu_health + c.IS_CPU_DELTA),
+            communication_health=_clamp(state.communication_health + c.IS_COMMS_PENALTY),
+            battery_soc=_clamp(state.battery_soc + battery_soc_side_effect),
         )
         effect = ActionEffect(
             action_type=ActionType.ISOLATE_SUBSYSTEM, step=step,
@@ -471,16 +483,50 @@ class ActionProcessor:
     @classmethod
     def _diagnose(cls, state: SubsystemState, step: int) -> Tuple[SubsystemState, ActionEffect]:
         """Diagnostic probe action. No direct intervention on plant state."""
-        new_state = SubsystemState(
-            battery_level=        state.battery_level,
-            temperature=          state.temperature,
-            cpu_health=           state.cpu_health,
-            communication_health= state.communication_health,
-        )
+        new_state = cls._copy_state(state)
+        diagnostic_fault, diagnostic_severity = cls._highest_severity_active_fault(state)
         effect = ActionEffect(
             action_type=ActionType.DIAGNOSE, step=step,
+            diagnostic_fault=diagnostic_fault,
+            diagnostic_severity=diagnostic_severity,
         )
         return new_state, effect
+
+    @staticmethod
+    def _copy_state(state: SubsystemState, **updates: float) -> SubsystemState:
+        state_dict = state.as_dict()
+        state_dict.update(updates)
+        return SubsystemState(**state_dict).clamp_all()
+
+    @staticmethod
+    def _active_fault_flags(state: SubsystemState) -> Dict[str, int]:
+        return {
+            "seu": int(getattr(state, "seu_flag", 0)),
+            "latchup": int(getattr(state, "latchup_flag", 0)),
+            "thermal": int(getattr(state, "thermal_fault_flag", 0)),
+            "memory": int(getattr(state, "memory_fault_flag", 0)),
+            "power": int(getattr(state, "power_fault_flag", 0)),
+        }
+
+    @classmethod
+    def _has_active_faults(cls, state: SubsystemState) -> bool:
+        return any(cls._active_fault_flags(state).values())
+
+    @classmethod
+    def _fault_severity(cls, state: SubsystemState) -> int:
+        return sum(cls._active_fault_flags(state).values())
+
+    @classmethod
+    def _highest_severity_active_fault(cls, state: SubsystemState) -> Tuple[str | None, int]:
+        active = cls._active_fault_flags(state)
+        if not any(active.values()):
+            return None, 0
+        # Deterministic priority order when multiple active faults share severity.
+        priority = ("power", "thermal", "latchup", "memory", "seu")
+        for fault_name in priority:
+            if active.get(fault_name, 0):
+                return fault_name, 1
+        return None, 0
 
     @staticmethod
     def action_space_size() -> int:
@@ -501,7 +547,7 @@ ACTION_COSTS = {
     int(ActionType.POWER_CYCLE):        0.8,
     int(ActionType.THERMAL_THROTTLING): 0.2,
     int(ActionType.ISOLATE_SUBSYSTEM):  1.0,
-    int(ActionType.DIAGNOSE):           0.1,
+    int(ActionType.DIAGNOSE):           0.35,
 }
 """
 Canonical action cost table — single source of truth.
