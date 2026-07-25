@@ -38,6 +38,10 @@ VALID_ACTIONS = [
 ]
 
 
+def safe_score(score: float) -> float:
+    return min(max(round(float(score), 4), 0.01), 0.99)
+
+
 def _normalize_dict(model: Any) -> Dict[str, Any]:
     """Convert a model object to a dictionary."""
     if hasattr(model, "model_dump"):
@@ -57,7 +61,7 @@ def _format_error(error: Exception | str | None) -> str:
 
 def _score_trajectory(task_name: str, trajectory: EvaluationTrajectory) -> float:
     """Score a trajectory using the task's grader."""
-    return score_trajectory(task_name, trajectory)
+    return safe_score(score_trajectory(task_name, trajectory))
 
 
 def run_random_task(task_alias: str, seed: int) -> Tuple[float, List[float]]:
@@ -87,7 +91,7 @@ def run_random_task(task_alias: str, seed: int) -> Tuple[float, List[float]]:
     
     print(f"[START] task={task_alias} env={ENV_NAME} model={MODEL_NAME}")
     
-    score = 0.0
+    score = safe_score(0.0)
     success = False
     rewards: List[float] = []
     
@@ -140,7 +144,7 @@ def run_random_task(task_alias: str, seed: int) -> Tuple[float, List[float]]:
         rewards_str = ",".join(f"{value:.2f}" for value in rewards)
         print(f"[END] success={str(success).lower()} steps={len(rewards)} rewards={rewards_str}")
     
-    return score, rewards
+    return safe_score(score), rewards
 
 
 def main() -> int:

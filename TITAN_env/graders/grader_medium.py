@@ -3,14 +3,14 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 
-def _clip01(value: float) -> float:
-    return float(max(0.0, min(1.0, value)))
+def safe_score(score: float) -> float:
+    return min(max(round(float(score), 4), 0.01), 0.99)
 
 
 def grade_medium(trajectory: List[Dict[str, Any]], energy_threshold: float = 0.55) -> float:
     """Grade medium task by thermal reduction and energy efficiency."""
     if len(trajectory) < 2:
-        return 0.0
+        return safe_score(0.0)
 
     # Support both 'cpu_temperature' (core) and 'cpu_temp' (OpenEnv wrapper) field names
     def get_temp(state: Dict) -> float:
@@ -22,7 +22,7 @@ def grade_medium(trajectory: List[Dict[str, Any]], energy_threshold: float = 0.5
 
     required_delta = max(start_temp - target_temp, 1e-6)
     achieved_delta = max(start_temp - final_temp, 0.0)
-    thermal_score = _clip01(achieved_delta / required_delta)
+    thermal_score = safe_score(achieved_delta / required_delta)
 
     currents = [
         float(step.get("state", {}).get("current_draw", 1.0))
@@ -30,9 +30,9 @@ def grade_medium(trajectory: List[Dict[str, Any]], energy_threshold: float = 0.5
     ]
     avg_current = sum(currents) / len(currents)
     if avg_current <= energy_threshold:
-        energy_score = 1.0
+        energy_score = safe_score(1.0)
     else:
-        energy_score = _clip01(1.0 - (avg_current - energy_threshold) / (1.0 - energy_threshold))
+        energy_score = safe_score(1.0 - (avg_current - energy_threshold) / (1.0 - energy_threshold))
 
     settle_step = len(trajectory) - 1
     for idx, step in enumerate(trajectory):
@@ -40,7 +40,7 @@ def grade_medium(trajectory: List[Dict[str, Any]], energy_threshold: float = 0.5
             settle_step = idx
             break
     max_steps = max(len(trajectory) - 1, 1)
-    efficiency_score = _clip01(1.0 - (float(settle_step) / float(max_steps)))
+    efficiency_score = safe_score(1.0 - (float(settle_step) / float(max_steps)))
 
     score = 0.55 * thermal_score + 0.25 * energy_score + 0.20 * efficiency_score
-    return _clip01(score)
+    return safe_score(score)

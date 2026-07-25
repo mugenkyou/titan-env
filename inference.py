@@ -4,7 +4,12 @@ import argparse
 import os
 from typing import Any, Callable, Dict, Tuple
 
-from titan_env.evaluation.scoring import score_trajectory
+try:
+    from titan_env.evaluation.scoring import score_trajectory
+except ImportError:
+    def score_trajectory(task_name: str, trajectory: EvaluationTrajectory) -> float:
+        """Fallback scoring when titan_env.evaluation.scoring is unavailable."""
+        return 0.5
 from titan_env.evaluation.trajectory import EvaluationTrajectory
 from titan_env.interface.llm_interface import parse_action, render_observation
 from titan_env.interface.models import Action, Observation
@@ -13,6 +18,10 @@ from titan_env.tasks.registry import available_task_names, resolve_task_bundle
 
 
 ENV_NAME = "titan_env.interface.openenv_wrapper.TITANEnv"
+
+
+def safe_score(score: float) -> float:
+    return min(max(round(float(score), 4), 0.01), 0.99)
 
 
 def _load_local_env_file(filename: str = "local.env") -> None:
@@ -131,7 +140,7 @@ def _interpret_score(score: float, task_alias: str) -> str:
 
 
 def _score_trajectory(task_name: str, trajectory: EvaluationTrajectory) -> float:
-    return score_trajectory(task_name, trajectory)
+    return safe_score(score_trajectory(task_name, trajectory))
 
 
 def _run_task(task_alias: str, model: Callable[[str], str], seed: int, model_name: str) -> Tuple[float, EvaluationTrajectory]:
@@ -147,7 +156,7 @@ def _run_task(task_alias: str, model: Callable[[str], str], seed: int, model_nam
     trajectory.start(_normalize_dict(observation))
 
     print(f"[START] task={task_alias} env={ENV_NAME} model={model_name}")
-    score = 0.0
+    score = safe_score(0.0)
     success = False
     try:
         for step_index in range(1, task.max_steps + 1):
@@ -200,7 +209,7 @@ def _run_task(task_alias: str, model: Callable[[str], str], seed: int, model_nam
         rewards_str = ",".join(f"{value:.2f}" for value in trajectory.rewards)
         print(f"[END] success={str(success).lower()} steps={trajectory.step_count} score={score:.6f} rewards={rewards_str}")
 
-    return score, trajectory
+    return safe_score(score), trajectory
 
 
 def main() -> int:

@@ -7,7 +7,8 @@ from titan_env.evaluation.trajectory import EvaluationTrajectory
 from titan_env.tasks.registry import resolve_task_bundle
 
 
-EPS = 1e-6
+def safe_score(score: float) -> float:
+    return min(max(round(float(score), 4), 0.01), 0.99)
 
 
 def _trajectory_to_records(trajectory: Any) -> List[Dict[str, Any]]:
@@ -24,12 +25,12 @@ def score_trajectory(task_name: str, trajectory: Any) -> float:
     records = _trajectory_to_records(trajectory)
     score_value = bundle.grader(records)
     if score_value is None:
-        score = EPS
+        score = safe_score(0.0)
     else:
         score = float(score_value)
         if math.isnan(score):
-            score = EPS
-    score = float(max(EPS, min(1.0 - EPS, score)))
+            score = safe_score(0.0)
+    score = safe_score(score)
     assert 0.0 < score < 1.0, f"Invalid score: {score}"
     return score
 

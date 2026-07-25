@@ -13,6 +13,10 @@ from titan_env.evaluation.trajectory import EvaluationTrajectory
 from titan_env.tasks.registry import resolve_task_bundle, list_registered_tasks
 
 
+def safe_score(score: float) -> float:
+    return min(max(round(float(score), 4), 0.01), 0.99)
+
+
 TASK_DESCRIPTIONS: Dict[str, str] = {
     "easy_single_fault_recovery": "Recover from a single SEU fault efficiently.",
     "medium_thermal_stabilization": "Reduce thermal stress under high load conditions.",
@@ -114,14 +118,14 @@ def run_task_with_trajectory(
         if done:
             break
 
-    score = score_trajectory(task.name, trajectory)
-    return score, trajectory
+    score = safe_score(score_trajectory(task.name, trajectory))
+    return safe_score(score), trajectory
 
 
 def run_task(task_name: str, model: Callable[[str], str], seed: int) -> float:
     """Run a task and return only the final score."""
     score, _ = run_task_with_trajectory(task_name, model, seed)
-    return score
+    return safe_score(score)
 
 
 def run_all_tasks(model: Callable[[str], str], seed: int) -> Dict[str, float]:
