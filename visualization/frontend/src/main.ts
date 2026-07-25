@@ -427,14 +427,16 @@ wsClient.onMessage((data) => {
       );
       console.log(`🔴 FAULT INJECTED: ${injectedFaultType}`);
     }
-    // Check if this is a recovery action (actions 1-6)
+    // Check if this is a recovery action (actions 1-6) — log it but DO NOT
+    // increment the recovered counter here. The backend is the source of
+    // truth and now broadcasts `faults_recovered` (only credited when the
+    // action actually matches the active fault type).
     else if (data.action > 0 && data.action <= 6) {
       addActionLog(
         data.step,
         data.action_name || data.action,
         data.reason || "causal_rl",
       );
-      satelliteState.faultsRecovered++;
       console.log(`🟢 RECOVERY ACTION: ${actionName} (action=${data.action})`);
     }
     // Skip logging NO_ACTION to reduce spam
@@ -447,6 +449,9 @@ wsClient.onMessage((data) => {
   }
   if (data.episode !== undefined) {
     satelliteState.episode = data.episode;
+  }
+  if (typeof data.faults_recovered === "number") {
+    satelliteState.faultsRecovered = data.faults_recovered;
   }
   if (data.terminated && !data.truncated) {
     // Satellite failed - reset

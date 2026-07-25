@@ -1,0 +1,35 @@
+# TITAN runtime dependencies.
+#
+# IMPORTANT: install torch SEPARATELY from the PyTorch CUDA index, BEFORE
+# running this file, so you get the CUDA build instead of the +cpu wheel:
+#
+#     pip install torch --index-url https://download.pytorch.org/whl/cu128
+#
+# Then:
+#
+#     pip install -r requirements.txt
+#
+# Tested with Python 3.12.
+
+# Web stack
+fastapi>=0.110,<1.0
+uvicorn[standard]>=0.27,<1.0
+websockets>=12.0
+pydantic>=2.6,<3.0
+
+# RL environment
+gymnasium>=0.29,<2.0
+numpy>=1.26,<3.0
+
+# Hugging Face stack — pin to versions known to load the GRPO Qwen3 adapter.
+transformers>=4.45,<6.0
+tokenizers>=0.20
+safetensors>=0.4
+huggingface_hub>=0.25
+accelerate>=0.30
+peft>=0.11
+
+# Optional but strongly recommended on CUDA: 5x faster 4-bit inference.
+# Install AFTER installing CUDA torch:
+#     pip install unsloth
+# (Not pinned here because the Unsloth wheel selector depends on torch+CUDA.)
