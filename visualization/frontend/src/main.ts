@@ -401,6 +401,63 @@ configureSimulationLoop({
   getMode: () => simMode,
 });
 
+/** Server-driven stepping + your inject buttons. */
+const RANDOM_FAULT_TYPES = [
+  "SEU",
+  "LATCH_UP",
+  "THERMAL",
+  "MEMORY",
+  "POWER",
+] as const;
+const RANDOM_FAULT_MS_BASE = 14000;
+let randomFaultTimer: ReturnType<typeof setInterval> | null = null;
+
+function setInjectPanelVisible(visible: boolean): void {
+  const el = document.getElementById("inject-panel");
+  if (el) el.style.display = visible ? "" : "none";
+}
+
+function stopRandomFaultLoop(): void {
+  if (randomFaultTimer !== null) {
+    clearInterval(randomFaultTimer);
+    randomFaultTimer = null;
+  }
+}
+
+function startRandomFaultLoop(): void {
+  stopRandomFaultLoop();
+  if (simMode !== "auto") return;
+  const period = Math.max(
+    5000,
+    RANDOM_FAULT_MS_BASE / Math.max(0.5, simSpeed),
+  );
+  randomFaultTimer = setInterval(() => {
+    if (simMode !== "auto" || !wsClient.isConnected()) return;
+    const ft =
+      RANDOM_FAULT_TYPES[
+        Math.floor(Math.random() * RANDOM_FAULT_TYPES.length)
+      ];
+    wsClient.send({ action: "inject_fault", fault_type: ft });
+    console.log(`[auto] random inject: ${ft}`);
+  }, period);
+}
+
+/** Manual = resume server broadcast + inject UI; Auto = pause server + client steps + random inject. */
+function applySimTransportMode(): void {
+  if (!wsClient.isConnected()) return;
+  if (simMode === "auto") {
+    wsClient.send({ action: "pause" });
+    setInjectPanelVisible(false);
+    startLoop();
+    startRandomFaultLoop();
+  } else {
+    stopRandomFaultLoop();
+    stopLoop();
+    wsClient.send({ action: "resume" });
+    setInjectPanelVisible(true);
+  }
+}
+
 wsClient.onMessage((data) => {
   const actionId = getActionId(data as Record<string, unknown>);
   // Debug: log all incoming data
@@ -519,16 +576,13 @@ wsClient.onMessage((data) => {
 wsClient.onConnect(() => {
   console.log("Connected to TITAN backend");
   hideLoading();
-  // Single-writer stepping: keep server broadcast idle; AUTO uses client step.
-  wsClient.send({ action: "pause" });
-  if (simMode === "auto") {
-    startLoop();
-  }
+  applySimTransportMode();
 });
 
 wsClient.onDisconnect(() => {
   console.log("Disconnected from backend - running in demo mode");
   stopLoop();
+  stopRandomFaultLoop();
   hideLoading();
 });
 
@@ -613,12 +667,7 @@ document.getElementById("btn-pause")?.addEventListener("click", () => {
 document.getElementById("ctrl-mode")?.addEventListener("change", (e) => {
   const v = (e.target as HTMLSelectElement).value;
   simMode = v === "auto" ? "auto" : "manual";
-  wsClient.send({ action: "pause" });
-  if (simMode === "auto") {
-    startLoop();
-  } else {
-    stopLoop();
-  }
+  applySimTransportMode();
 });
 
 document.getElementById("ctrl-speed")?.addEventListener("change", (e) => {
@@ -626,6 +675,9 @@ document.getElementById("ctrl-speed")?.addEventListener("change", (e) => {
   syncSpeedWidgets();
   wsClient.send({ action: "set_speed", speed: simSpeed });
   updateSpeed();
+  if (simMode === "auto") {
+    startRandomFaultLoop();
+  }
 });
 
 document.getElementById("ctrl-reset")?.addEventListener("click", () => {

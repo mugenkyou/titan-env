@@ -581,9 +581,12 @@
     <div id="top-sim-bar">
       <label>
         Mode
-        <select id="ctrl-mode" title="Simulation stepping mode">
-          <option value="manual" selected>Manual</option>
-          <option value="auto">Auto</option>
+        <select
+          id="ctrl-mode"
+          title="Manual: you inject faults with the side buttons; server runs the sim so agents recover. Auto: random faults are injected for you; client steps the sim."
+        >
+          <option value="manual" selected>Manual (inject buttons)</option>
+          <option value="auto">Auto (random faults)</option>
         </select>
       </label>
       <label>
@@ -650,9 +653,9 @@
       </div>
     </div>
 
-    <!-- Fault Injection Panel -->
+    <!-- Fault Injection Panel (Manual mode only — hidden in Auto) -->
     <div id="inject-panel">
-      <h2>⚡ Inject Fault</h2>
+      <h2>⚡ Inject Fault (manual)</h2>
       <button
         class="inject-btn seu"
         id="btn-inject-seu"
