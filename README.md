@@ -24,7 +24,26 @@ Real satellites face radiation-induced faults that require autonomous recovery w
 Observation → LLM → Action → Environment → Score
 ```
 
-## Quick Start
+## Meta PyTorch OpenEnv Hackathon (submission)
+
+**Required materials (all linked from this README; no large video files in the Hub repo):**
+
+| Requirement | Where |
+|-------------|--------|
+| **OpenEnv (latest)** | Build on this repo; `openenv validate`. Manifest: [`openenv.yaml`](./openenv.yaml). Wrapper: `titan_env.interface.openenv_wrapper:TITANEnv`. |
+| **Training (Unsloth + TRL)** | Colab-style / GPU notebook: [`notebooks/grpo_qwen3_training.ipynb`](./notebooks/grpo_qwen3_training.ipynb) |
+| **Training evidence (real run)** | Plots committed in `docs/` (see **Training (evidence)** below). |
+| **Runnable HF Space** | **[Hugging Face Space — titan-env](https://huggingface.co/spaces/mugenkyou/titan-env)** |
+| **Write-up / video** | **Write-up:** use the [Space README](https://huggingface.co/spaces/mugenkyou/titan-env) as the public mini-blog, or publish a [Hugging Face blog / paper page](https://huggingface.co/blog) and link it here. **Video:** add your public **&lt; 2 min** YouTube URL (replace the placeholder): `https://www.youtube.com/watch?v=YOUR_VIDEO_ID` — do **not** commit video files to the repo. |
+| **What judges look for** | [Google Doc (judging guide)](https://docs.google.com/document/d/1Odznuzwtb1ecDOm2t6ToZd4MuMXXfO6vWUGcxbC6mFs/edit?tab=t.0#bookmark=kix.2dz0x0nie3me) |
+| **GRPO adapter weights** | Not in git (see [`docs/GRPO_ADAPTER.md`](./docs/GRPO_ADAPTER.md)); download to `grpo_qwen3_local/` or restore `grpo_qwen3_final/` locally. |
+
+**Additional references:**
+
+- **QUICKSTART** (install, PyTorch, 3D dashboard): [QUICKSTART.md](./QUICKSTART.md)
+- **Training notebook (Kaggle mirror):** [Kaggle](https://www.kaggle.com/code/jayasimhareddy777/notebook64b334a6c9)
+
+## Quick Start (OpenEnv + inference)
 
 ```bash
 pip install -e .
@@ -32,55 +51,39 @@ openenv validate
 python inference.py
 ```
 
-### Curriculum RL Training (Colab / GPU)
+## TITAN — Satellite Fault Recovery Benchmark
 
-```bash
+> "A benchmark that forces agents to diagnose before they act — because in space, guessing costs everything."
 
-# TITAN — Satellite Fault Recovery Benchmark
+### The problem
 
-> "A benchmark that forces agents to diagnose before they act — 
-> because in space, guessing costs everything."
+Real satellites face radiation faults during communication blackouts. The agent must recover autonomously without direct fault labels—only symptoms: voltage drops, temperature spikes, memory drift.
 
-## The Problem
-Real satellites face radiation faults during communication blackouts.
-They must recover autonomously — but they can't see what's broken.
-Only symptoms: voltage drops, temperature spikes, memory drift.
-Like a doctor who can only see fever and heart rate, never the diagnosis.
+### What TITAN does
 
-## What TITAN Does
-- **Symptom-only observations** — no fault flags exposed
-- **DIAGNOSE action** — agent pays a cost to gather evidence
-- **Action side-effects** — wrong actions cause real damage
-- **Fault severity escalation** — early action strictly better than late
-- **Held-out fault generalization** — 3 fault types never seen in training
+- **Symptom-only observations** in many eval modes—limited fault exposure in observation
+- **DIAGNOSE**-style action path and recovery actions with side effects
+- **Fault severity** and **multi-fault** stress in hard tasks
+- Scores strictly in `(0, 1)` per task grader
 
-## Training
-Fine-tuned Qwen3-1.7B on TITAN env via GRPO (Unsloth + TRL).
+### Training (evidence)
 
-![Reward Curve](docs/reward_curve_grpo_qwen3.png)
-![Loss Curve](docs/loss_curve_grpo_qwen3.png)
+Fine-tuned **Qwen3-1.7B** on the TITAN environment via **GRPO** using **Unsloth** and **Hugging Face TRL** in [`notebooks/grpo_qwen3_training.ipynb`](./notebooks/grpo_qwen3_training.ipynb).
 
-## Results
-| Policy | Mean Survival | Notes |
-|---|---|---|
-| no_action | ~12 steps | baseline |
-| random | ~18 steps | baseline |
-| heuristic | ~31 steps | fails without fault flags |
-| Qwen2.5 GRPO | TBD | trained agent |
+**Reward and loss (from a real run; files committed under `docs/`):**
 
-## Links
-- 🤗 HF Space: https://huggingface.co/spaces/mugenkyou/titan-env
-- 📝 Blog: [link]
-- 📓 Training Notebook (local): [notebooks/grpo_qwen3_training.ipynb](./notebooks/grpo_qwen3_training.ipynb)
-- 📓 Training Notebook (Kaggle): https://www.kaggle.com/code/jayasimhareddy777/notebook64b334a6c9
+| Reward (training) | Loss (training) |
+|-------------------|-----------------|
+| ![Reward curve](docs/reward_curve_grpo_qwen3.png) | ![Loss curve](docs/loss_curve_grpo_qwen3.png) |
 
-## Quick Start
-```bash
-pip install -e .
-openenv validate
-python inference.py
-```
-```
+### Results (illustrative)
+
+| Policy     | Mean survival (approx.) | Notes              |
+|------------|-------------------------|--------------------|
+| no_action  | ~12 steps          | baseline           |
+| random     | ~18 steps          | baseline           |
+| heuristic  | ~31 steps          | no LLM             |
+| Qwen3 GRPO | see eval runs         | trained agent      |
 
 ## Tasks
 

@@ -72,8 +72,11 @@ wheels/
 node_modules/
 visualization/frontend/node_modules/
 
-# Local model checkpoints / adapter outputs (track via Hugging Face / LFS)
-# (the GRPO Qwen3 adapter directory currently in the repo is intentional)
+# Local model checkpoints / adapter outputs (track via Hugging Face Hub / LFS)
+# GRPO LoRA adapter: large; do not commit. Populate locally or download from a HF model repo.
+# See docs/GRPO_ADAPTER.md. If the folder was committed before, run:
+#   git rm -r --cached grpo_qwen3_final
+grpo_qwen3_final/
 *.bin
 *.pt
 
