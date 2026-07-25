@@ -71,7 +71,8 @@ Fine-tuned Qwen3-1.7B on TITAN env via GRPO (Unsloth + TRL).
 ## Links
 - 🤗 HF Space: https://huggingface.co/spaces/mugenkyou/titan-env
 - 📝 Blog: [link]
-- 📓 Training Notebook: https://www.kaggle.com/code/jayasimhareddy777/notebook64b334a6c9
+- 📓 Training Notebook (local): [notebooks/grpo_qwen3_training.ipynb](./notebooks/grpo_qwen3_training.ipynb)
+- 📓 Training Notebook (Kaggle): https://www.kaggle.com/code/jayasimhareddy777/notebook64b334a6c9
 
 ## Quick Start
 ```bash
