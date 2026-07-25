@@ -210,7 +210,7 @@ def _run_task(task_alias: str, model: Callable[[str], str], seed: int, model_nam
             except Exception:
                 pass
         rewards_str = ",".join(f"{value:.2f}" for value in trajectory.rewards)
-        print(f"[END] success={str(success).lower()} steps={trajectory.step_count} score={score:.2f} rewards={rewards_str}")
+        print(f"[END] success={str(success).lower()} steps={trajectory.step_count} score={score:.6f} rewards={rewards_str}")
 
     return score, trajectory
 
@@ -250,7 +250,7 @@ def main() -> int:
     print("=" * 60, file=sys.stderr)
     for task_alias, score in task_scores.items():
         interpretation = _interpret_score(score, task_alias)
-        print(f"{task_alias:<12} | Score: {score:.2f} | {interpretation}", file=sys.stderr)
+        print(f"{task_alias:<12} | Score: {score:.6f} | {interpretation}", file=sys.stderr)
     print("=" * 60, file=sys.stderr)
 
     return 0
