@@ -1,6 +1,6 @@
 """
 TITAN — Reward Module: Version 2 (Research-Grade)
-TITAN_env/rewards/reward_v2.py
+titan_env/rewards/reward_v2.py
 
 Multi-objective normalized reward for RL training that encourages:
   - Long satellite uptime
@@ -23,7 +23,7 @@ Typical range: [-3, +1] per step (failure: up to –53).
 
 Usage
 -----
-    from TITAN_env.core.rewards.reward_v2 import compute_reward
+    from titan_env.core.rewards.reward_v2 import compute_reward
     total, components = compute_reward(obs_dict, action, terminated)
 
 Backward compatibility
@@ -35,7 +35,7 @@ from __future__ import annotations
 
 from typing import Dict, Tuple, Union
 
-from TITAN_env.core.environment.actions import ActionType, ACTION_COSTS
+from titan_env.core.environment.actions import ActionType, ACTION_COSTS
 
 
 # ---------------------------------------------------------------------------
@@ -226,3 +226,5 @@ WEIGHTS: Dict[str, float] = {
     "w4_recovery_latency": W4_RECOVERY_LATENCY,
     "w5_action_cost":      W5_ACTION_COST,
 }
+
+

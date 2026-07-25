@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from TITAN_env.core.environment.fault_injection import FaultInjector, INTENSITY_PROFILES
-from TITAN_env.core.environment.TITAN_env import TITANEnv as CoreTITANEnv
-from TITAN_env.tasks.base_task import BaseTask, StateDict, Trajectory
+from titan_env.core.environment.fault_injection import FaultInjector, INTENSITY_PROFILES
+from titan_env.core.environment.titan_env import TITANEnv as CoreTITANEnv
+from titan_env.tasks.base_task import BaseTask, StateDict, Trajectory
 
 
 def _hard_init(env, seed: int) -> None:
@@ -84,3 +84,5 @@ class HardMultiFaultSurvivalTask(BaseTask):
 
 
 HARD_TASK = HardMultiFaultSurvivalTask()
+
+

@@ -3,14 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional
 
-from TITAN_env.core.environment.state_model import OBS_KEYS
-from TITAN_env.core.rewards.reward_v2 import compute_reward as compute_reward_v2
-from TITAN_env.interface.action_mapping import discrete_from_command
-from TITAN_env.interface.llm_interface import parse_action, render_observation, get_available_commands
-from TITAN_env.interface.models import Observation
-from TITAN_env.evaluation.scoring import score_trajectory
-from TITAN_env.evaluation.trajectory import EvaluationTrajectory
-from TITAN_env.tasks.registry import resolve_task_bundle, list_registered_tasks
+from titan_env.core.environment.state_model import OBS_KEYS
+from titan_env.core.rewards.reward_v2 import compute_reward as compute_reward_v2
+from titan_env.interface.action_mapping import discrete_from_command
+from titan_env.interface.llm_interface import parse_action, render_observation, get_available_commands
+from titan_env.interface.models import Observation
+from titan_env.evaluation.scoring import score_trajectory
+from titan_env.evaluation.trajectory import EvaluationTrajectory
+from titan_env.tasks.registry import resolve_task_bundle, list_registered_tasks
 
 
 TASK_DESCRIPTIONS: Dict[str, str] = {
@@ -133,3 +133,5 @@ def run_all_tasks(model: Callable[[str], str], seed: int) -> Dict[str, float]:
 
 
 __all__ = ["run_task", "run_task_with_trajectory", "run_all_tasks"]
+
+

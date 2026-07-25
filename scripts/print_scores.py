@@ -17,7 +17,7 @@ import argparse
 import json
 import sys
 
-from TITAN_env.evaluation.score_interpreter import interpret_score, format_result
+from titan_env.evaluation.score_interpreter import interpret_score, format_result
 
 
 def main() -> int:
@@ -93,3 +93,5 @@ def print_table(results: list) -> None:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+

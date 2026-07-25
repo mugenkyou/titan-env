@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from TITAN_env.tasks.base_task import BaseTask, StateDict, Trajectory
+from titan_env.tasks.base_task import BaseTask, StateDict, Trajectory
 
 
 def _easy_init(env, seed: int) -> None:
@@ -43,3 +43,5 @@ EASY_TASK = BaseTask(
     success_fn=_easy_success,
     constraint_fn=_easy_constraints,
 )
+
+

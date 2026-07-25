@@ -15,7 +15,7 @@ total = reward_survival + reward_action_cost + reward_failure_penalty
 
 Usage
 -----
-    from TITAN_env.core.rewards.reward_v1 import compute_reward
+    from titan_env.core.rewards.reward_v1 import compute_reward
     total, components = compute_reward(state, action, terminated)
 """
 
@@ -23,7 +23,7 @@ from __future__ import annotations
 
 from typing import Dict, Tuple
 
-from TITAN_env.core.environment.actions import ActionType, ACTION_COSTS
+from titan_env.core.environment.actions import ActionType, ACTION_COSTS
 
 
 # ---------------------------------------------------------------------------
@@ -75,3 +75,5 @@ def compute_reward(
         "reward_failure_penalty": failure_penalty,
     }
     return float(total), components
+
+

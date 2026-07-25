@@ -1,7 +1,7 @@
-name: TITAN-env
+name: titan-env
 description: Satellite fault recovery simulation environment
 version: 1.0.0
-entrypoint: TITAN_env.interface.openenv_wrapper:TITANEnv
+entrypoint: titan_env.interface.openenv_wrapper:TITANEnv
 actions:
   type: object
   additionalProperties: false
@@ -81,3 +81,5 @@ rewards:
   properties:
     value:
       type: number
+
+

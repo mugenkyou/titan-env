@@ -3,13 +3,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, Dict, Tuple
 
-from TITAN_env.graders.grader_easy import grade_easy
-from TITAN_env.graders.grader_hard import grade_hard
-from TITAN_env.graders.grader_medium import grade_medium
-from TITAN_env.tasks.base_task import BaseTask
-from TITAN_env.tasks.task_easy import EASY_TASK
-from TITAN_env.tasks.task_hard import HARD_TASK
-from TITAN_env.tasks.task_medium import MEDIUM_TASK
+from titan_env.graders.grader_easy import grade_easy
+from titan_env.graders.grader_hard import grade_hard
+from titan_env.graders.grader_medium import grade_medium
+from titan_env.tasks.base_task import BaseTask
+from titan_env.tasks.task_easy import EASY_TASK
+from titan_env.tasks.task_hard import HARD_TASK
+from titan_env.tasks.task_medium import MEDIUM_TASK
 
 
 @dataclass(frozen=True)
@@ -56,3 +56,5 @@ def list_registered_tasks() -> Tuple[str, ...]:
         MEDIUM_TASK.name,
         HARD_TASK.name,
     )
+
+

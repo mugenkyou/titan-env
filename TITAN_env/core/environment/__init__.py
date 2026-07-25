@@ -1,5 +1,5 @@
 from .state_model import SubsystemState, StateBounds, StateTransition
-from .TITAN_env import TITANEnv
+from .titan_env import TITANEnv
 from .fault_injection import (
     FaultType,
     FaultEvent,
@@ -35,3 +35,5 @@ __all__ = [
     # Phase 4
     "TITANGymEnv",
 ]
+
+

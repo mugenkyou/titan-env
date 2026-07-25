@@ -1,6 +1,6 @@
 """
 TITAN — Phase 1 + 2 + 3 + 5: Core State Engine + Fault Injection + Action System
-TITAN_env.py
+titan_env.py
 
 Phase 5 additions:
   - StateTransition.step() receives the environment RNG for reproducible noise
@@ -35,7 +35,7 @@ from .state_model import (
 from .fault_injection import FaultInjector, FaultEvent, FaultType
 from .actions import ActionType, ActionProcessor, ActionEffect
 
-# Re-export for any code that imported OBS_KEYS from TITAN_env directly
+# Re-export for any code that imported OBS_KEYS from titan_env directly
     # Re-export for any code that imported OBS_KEYS from TITAN directly
 __all__ = ["TITANEnv", "OBS_KEYS", "OBS_DIM"]
 
@@ -463,3 +463,5 @@ class TITANEnv:
             f"cpu={self._state.cpu_health:.3f}, "
             f"comms={self._state.communication_health:.3f})"
         )
+
+

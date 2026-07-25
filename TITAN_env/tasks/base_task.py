@@ -5,9 +5,9 @@ from typing import Any, Callable, Dict, List, Optional, Sequence
 
 import numpy as np
 
-from TITAN_env.core.environment.actions import ActionType
-from TITAN_env.core.environment.TITAN_env import TITANEnv as CoreTITANEnv
-from TITAN_env.interface.openenv_wrapper import TITANEnv as OpenEnvTITANEnv
+from titan_env.core.environment.actions import ActionType
+from titan_env.core.environment.titan_env import TITANEnv as CoreTITANEnv
+from titan_env.interface.openenv_wrapper import TITANEnv as OpenEnvTITANEnv
 
 StateDict = Dict[str, float]
 Trajectory = List[Dict[str, Any]]
@@ -152,3 +152,5 @@ class BaseTask:
         env.state.memory_fault_flag = int(bool(state.memory_fault_flag))
         env.state.power_fault_flag = int(bool(state.power_fault_flag))
         env.state.recent_fault_count = _clip01(state.recent_fault_count)
+
+

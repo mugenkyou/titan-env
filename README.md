@@ -100,8 +100,8 @@ Valid commands accepted by the environment:
 
 ```bash
 # Clone the repository
-git clone https://github.com/mugenkyou/TITAN-environment.git
-cd TITAN-environment
+git clone https://github.com/mugenkyou/titan-environment.git
+cd titan-environment
 
 # Create virtual environment (recommended)
 python -m venv .venv
@@ -177,11 +177,11 @@ This allows reproducible offline testing and validation without external depende
 The script logs all task executions in the standardized format:
 
 ```text
-[START] task=easy env=TITAN_env.interface.openenv_wrapper:TITANEnv model=fallback-noop
+[START] task=easy env=titan_env.interface.openenv_wrapper:TITANEnv model=fallback-noop
 [STEP] step=1 action=no_action reward=0.75 done=false error=null
 [STEP] step=2 action=reset reward=0.85 done=false error=null
 [END] success=true steps=12 rewards=0.75,0.85
-[START] task=medium env=TITAN_env.interface.openenv_wrapper:TITANEnv model=fallback-noop
+[START] task=medium env=titan_env.interface.openenv_wrapper:TITANEnv model=fallback-noop
 ...
 ```
 
@@ -198,8 +198,8 @@ Each task produces three sections:
 Build and run the container locally:
 
 ```bash
-docker build -t TITAN-env .
-docker run -p 7860:7860 -e PORT=7860 TITAN-env
+docker build -t titan-env .
+docker run -p 7860:7860 -e PORT=7860 titan-env
 ```
 
 ### HuggingFace Spaces
@@ -262,7 +262,7 @@ The validator checks:
 openenv validate
 
 # Build Docker image
-docker build -t TITAN-env .
+docker build -t titan-env .
 
 # Test HTTP server
 curl -X POST http://localhost:7860/reset -H "Content-Type: application/json" -d '{}'
@@ -291,10 +291,11 @@ This script checks:
 
 ## Notes
 
-- The package entrypoint is `TITAN_env.interface.openenv_wrapper:TITANEnv`.
-- The deployment server is `TITAN_env.server.app`.
+- The package entrypoint is `titan_env.interface.openenv_wrapper:TITANEnv`.
+- The deployment server is `titan_env.server.app`.
 - For a full folder breakdown, see [FILE_STRUCTURE.md](./FILE_STRUCTURE.md).
 - Additional architecture and system documentation is available in the `docs/` folder.
 - System architecture: [docs/system-architecture.md](./docs/system-architecture.md)
 - Component diagram: [docs/component-diagram.mmd](./docs/component-diagram.mmd)
 ```
+

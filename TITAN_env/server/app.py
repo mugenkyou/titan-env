@@ -7,8 +7,8 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Dict
 
-from TITAN_env.interface.models import Action
-from TITAN_env.interface.openenv_wrapper import TITANEnv
+from titan_env.interface.models import Action
+from titan_env.interface.openenv_wrapper import TITANEnv
 
 
 _APP_ENV: TITANEnv | None = None
@@ -110,3 +110,5 @@ def main() -> int:
 
 if __name__ == "__main__":
     serve()
+
+

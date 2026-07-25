@@ -7,7 +7,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 COPY pyproject.toml README.md /app/
-COPY TITAN_env /app/TITAN_env
+COPY titan_env /app/titan_env
 COPY server /app/server
 COPY inference.py /app/inference.py
 COPY openenv.yaml /app/openenv.yaml
@@ -18,4 +18,4 @@ RUN pip install --no-cache-dir --upgrade pip \
 
 EXPOSE 7860
 
-CMD ["python", "-m", "TITAN_env.server.app"]
+CMD ["python", "-m", "titan_env.server.app"]

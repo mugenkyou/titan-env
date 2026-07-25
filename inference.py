@@ -4,14 +4,14 @@ import argparse
 import os
 from typing import Any, Callable, Dict, Tuple
 
-from TITAN_env.evaluation.trajectory import EvaluationTrajectory
-from TITAN_env.interface.llm_interface import parse_action, render_observation
-from TITAN_env.interface.models import Action, Observation
-from TITAN_env.interface.openenv_wrapper import TITANEnv as OpenEnvWrapper
-from TITAN_env.tasks.registry import available_task_names, resolve_task_bundle
+from titan_env.evaluation.trajectory import EvaluationTrajectory
+from titan_env.interface.llm_interface import parse_action, render_observation
+from titan_env.interface.models import Action, Observation
+from titan_env.interface.openenv_wrapper import TITANEnv as OpenEnvWrapper
+from titan_env.tasks.registry import available_task_names, resolve_task_bundle
 
 
-ENV_NAME = "TITAN_env.interface.openenv_wrapper.TITANEnv"
+ENV_NAME = "titan_env.interface.openenv_wrapper.TITANEnv"
 
 
 def _load_local_env_file(filename: str = "local.env") -> None:
@@ -250,3 +250,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

@@ -38,7 +38,7 @@ import numpy as np
 import gymnasium as gym
 from gymnasium import spaces
 
-from .TITAN_env import TITANEnv, OBS_KEYS, OBS_DIM
+from .titan_env import TITANEnv, OBS_KEYS, OBS_DIM
 from .state_model import SubsystemState, StateBounds
 from .fault_injection import FaultInjector, RadiationProfile
 from .actions import ActionType, ACTION_COSTS
@@ -247,3 +247,5 @@ class TITANGymEnv(gym.Env):
         p = self._injector.profile
         raw = (p.p_seu + p.p_latchup + p.p_telemetry) / 3.0
         return float(min(raw, 1.0))
+
+

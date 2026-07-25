@@ -62,6 +62,8 @@ def run_command(cmd: List[str], timeout: int = 300, env: Optional[dict] = None) 
             cmd,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=timeout,
             cwd=str(_ROOT),
             env=proc_env,
@@ -204,7 +206,7 @@ def check_docker_build() -> CheckResult:
     if not dockerfile.exists():
         return CheckResult("Docker Build", False, "Dockerfile not found")
 
-    cmd = ["docker", "build", "-t", "TITAN-env-test", str(_ROOT)]
+    cmd = ["docker", "build", "-t", "titan-env-test", str(_ROOT)]
     code, stdout, stderr = run_command(cmd, timeout=600)
 
     if code == 0:

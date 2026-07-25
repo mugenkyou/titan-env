@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, Iterable, List, Sequence
 
-from TITAN_env.evaluation.trajectory import EvaluationTrajectory
-from TITAN_env.tasks.registry import resolve_task_bundle
+from titan_env.evaluation.trajectory import EvaluationTrajectory
+from titan_env.tasks.registry import resolve_task_bundle
 
 
 def _trajectory_to_records(trajectory: Any) -> List[Dict[str, Any]]:
@@ -23,3 +23,5 @@ def score_trajectory(task_name: str, trajectory: Any) -> float:
 
 
 __all__ = ["score_trajectory"]
+
+

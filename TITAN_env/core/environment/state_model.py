@@ -3,7 +3,7 @@ TITAN — Phase 1 + 2: Core State Engine + Physics Model Upgrade
 state_model.py
 
 Phase 2 additions:
-    - Centralized OBS_KEYS (moved here from TITAN_env.py)
+    - Centralized OBS_KEYS (moved here from titan_env.py)
   - Physics parameter block (8 named constants)
   - Five dedicated subsystem update functions:
       update_cpu_temperature()  — thermal model
@@ -143,7 +143,7 @@ class SubsystemState:
     memory_integrity     : SRAM/flash integrity   (Phase 2: physics-driven)
     cpu_load             : processor utilisation  (Phase 2: physics-driven)
 
-    Fault flags (set by TITAN_env, reset each step)
+    Fault flags (set by titan_env, reset each step)
     -------------------------------------------------
     seu_flag, latchup_flag, thermal_fault_flag,
     memory_fault_flag, power_fault_flag, recent_fault_count
@@ -467,7 +467,7 @@ class StateTransition:
             - cls.PWR_TEMP_COOLING
         )
 
-        # Flags reset to 0; TITAN_env sets them after StateTransition
+        # Flags reset to 0; titan_env sets them after StateTransition
         return SubsystemState(
             battery_level=        new_battery,
             temperature=          new_temperature,
@@ -538,3 +538,5 @@ def clamp(value: float, lo: float = 0.0, hi: float = 1.0) -> float:
     Used inside every subsystem update function to guarantee safe output.
     """
     return max(lo, min(hi, value))
+
+

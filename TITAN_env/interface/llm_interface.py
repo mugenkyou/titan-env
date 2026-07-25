@@ -1,6 +1,6 @@
 """
 TITAN — Phase 2: LLM Interface Layer
-TITAN_environment/llm_interface.py
+titan_environment/llm_interface.py
 
 Provides language-based interpretation of observations and parsing of natural
 language actions into valid commands. This layer sits on top of the OpenEnv
@@ -18,7 +18,7 @@ from __future__ import annotations
 import re
 from typing import Dict, List, Optional, Tuple
 
-from TITAN_env.interface.models import Action, Observation, Reward
+from titan_env.interface.models import Action, Observation, Reward
 
 
 # ============================================================================
@@ -539,3 +539,5 @@ def get_action_synonyms(canonical_command: str) -> Optional[List[str]]:
         List of accepted synonyms, or None if command not recognized
     """
     return ACTION_VOCABULARY.get(canonical_command)
+
+

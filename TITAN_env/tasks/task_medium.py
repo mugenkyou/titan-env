@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from TITAN_env.tasks.base_task import BaseTask, StateDict, Trajectory
+from titan_env.tasks.base_task import BaseTask, StateDict, Trajectory
 
 
 def _medium_init(env, seed: int) -> None:
@@ -48,3 +48,5 @@ MEDIUM_TASK = BaseTask(
     success_fn=_medium_success,
     constraint_fn=_medium_constraints,
 )
+
+
