@@ -25,12 +25,18 @@ Shows the complete TITAN architecture with integrated RL training pipeline:
 - Solid arrows: synchronous forward data flow
 - Dashed arrows: training/deployment feedback loops
 
-### Reward Curve (reward_curve_grpo.png)
+### Reward Curve (reward_curve_grpo_qwen3.png)
 Training progress visualization showing:
 - **X-axis**: Training step (iteration count)
 - **Y-axis**: Mean reward per episode
 - **Convergence**: ~1.0 mean reward indicates successful GRPO training
 - **Implication**: Trained policy learns to balance fault diagnosis, action cost, and survival
+
+### Loss Curve (loss_curve_grpo_qwen3.png)
+GRPO objective loss across training steps for the Qwen3-1.7B LoRA fine-tune.
+A monotonically decreasing curve (with KL term staying bounded) confirms the
+policy is improving against the multi-objective reward without diverging from
+the reference model.
 
 ## How They Connect
 
@@ -84,7 +90,7 @@ Training progress visualization showing:
 ## Validation Flow
 
 ```
-reward_curve_grpo.png (training success)
+reward_curve_grpo_qwen3.png + loss_curve_grpo_qwen3.png (training success)
          ↓
     Checkpoint ready for deployment
          ↓
