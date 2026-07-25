@@ -146,6 +146,26 @@ docker run -p 7860:7860 -e PORT=7860 titan-env
 - `POST /reset`
 - `POST /step` with payload `{ "command": "<action>" }`
 
+## GRPO Training Curves
+
+### Loss Curve
+
+![Qwen3-1.7B GRPO Training Loss Curve](docs/loss_curve_grpo_qwen3.png)
+
+- Chart title: `Qwen3-1.7B GRPO Training — Loss Curve`
+- Axes: `Step` (x-axis), `Loss` (y-axis)
+- Legend value: `Best: 1.281`
+- Trend: loss decreases steadily from early training to the final checkpoint.
+
+### Reward Curve
+
+![Qwen3-1.7B GRPO Training Reward Curve](docs/reward_curve_grpo_qwen3.png)
+
+- Chart title: `Qwen3-1.7B GRPO Training — Reward Curve`
+- Axes: `Step` (x-axis), `Reward` (y-axis)
+- Legend value: `Peak: 1.073`
+- Trend: reward starts high, drops mid-training, then fluctuates in a narrower band.
+
 ## Notes
 
 - OpenEnv wrapper entrypoint: `titan_env.interface.openenv_wrapper:TITANEnv`
