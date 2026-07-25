@@ -55,9 +55,10 @@ Like a doctor who can only see fever and heart rate, never the diagnosis.
 - **Held-out fault generalization** — 3 fault types never seen in training
 
 ## Training
-Fine-tuned Qwen2.5-1.5B on TITAN env via GRPO (Unsloth + TRL).
+Fine-tuned Qwen3-1.7B on TITAN env via GRPO (Unsloth + TRL).
 
-![Reward Curve](docs/reward_curve_grpo.png)
+![Reward Curve](docs/reward_curve_grpo_qwen3.png)
+![Loss Curve](docs/loss_curve_grpo_qwen3.png)
 
 ## Results
 | Policy | Mean Survival | Notes |
@@ -70,7 +71,7 @@ Fine-tuned Qwen2.5-1.5B on TITAN env via GRPO (Unsloth + TRL).
 ## Links
 - 🤗 HF Space: https://huggingface.co/spaces/mugenkyou/titan-env
 - 📝 Blog: [link]
-- 📓 Training Notebook: [kaggle link]
+- 📓 Training Notebook: https://www.kaggle.com/code/jayasimhareddy777/notebook64b334a6c9
 
 ## Quick Start
 ```bash
