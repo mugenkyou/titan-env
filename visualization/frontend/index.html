@@ -1,0 +1,708 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TITAN - Earth Satellite Simulation</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='50' font-size='48'%3E%F0%9F%9B%B0%EF%B8%8F%3C/text%3E%3C/svg%3E"
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: "Segoe UI", system-ui, sans-serif;
+        background: #000;
+        overflow: hidden;
+      }
+      #app {
+        width: 100vw;
+        height: 100vh;
+      }
+
+      /* Telemetry Panel */
+      #telemetry-panel {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        background: rgba(0, 20, 40, 0.85);
+        border: 1px solid rgba(0, 150, 255, 0.3);
+        border-radius: 12px;
+        padding: 20px;
+        color: #fff;
+        min-width: 320px;
+        backdrop-filter: blur(10px);
+        z-index: 1000;
+      }
+
+      #telemetry-panel h2 {
+        font-size: 14px;
+        color: #0af;
+        margin-bottom: 15px;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+      }
+
+      .telemetry-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+        font-size: 12px;
+      }
+
+      .telemetry-label {
+        color: #8cf;
+        flex: 1;
+      }
+
+      .telemetry-value {
+        color: #fff;
+        font-family: "Consolas", monospace;
+        width: 60px;
+        text-align: right;
+      }
+
+      .telemetry-bar {
+        width: 100px;
+        height: 6px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 3px;
+        margin-left: 10px;
+        overflow: hidden;
+      }
+
+      .telemetry-bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #0af, #0fa);
+        border-radius: 3px;
+        transition: width 0.3s ease;
+      }
+
+      .telemetry-bar-fill.warning {
+        background: linear-gradient(90deg, #fa0, #f80);
+      }
+      .telemetry-bar-fill.danger {
+        background: linear-gradient(90deg, #f00, #f40);
+      }
+
+      /* Fault Indicators */
+      #fault-panel {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: rgba(40, 0, 0, 0.85);
+        border: 1px solid rgba(255, 50, 50, 0.3);
+        border-radius: 12px;
+        padding: 20px;
+        color: #fff;
+        min-width: 200px;
+        backdrop-filter: blur(10px);
+        z-index: 1000;
+      }
+
+      #fault-panel h2 {
+        font-size: 14px;
+        color: #f55;
+        margin-bottom: 15px;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+      }
+
+      .fault-indicator {
+        display: flex;
+        align-items: center;
+        margin-bottom: 8px;
+        font-size: 12px;
+      }
+
+      .fault-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 10px;
+        background: #333;
+        transition: all 0.2s ease;
+      }
+
+      .fault-dot.active {
+        background: #f00;
+        box-shadow:
+          0 0 10px #f00,
+          0 0 20px #f00;
+        animation: pulse 0.5s infinite alternate;
+      }
+
+      @keyframes pulse {
+        from {
+          opacity: 1;
+          transform: scale(1);
+        }
+        to {
+          opacity: 0.7;
+          transform: scale(1.2);
+        }
+      }
+
+      /* Action Log */
+      #action-panel {
+        position: fixed;
+        bottom: 20px;
+        left: 20px;
+        background: rgba(0, 40, 20, 0.85);
+        border: 1px solid rgba(0, 255, 100, 0.3);
+        border-radius: 12px;
+        padding: 20px;
+        color: #fff;
+        width: 400px;
+        max-height: 200px;
+        backdrop-filter: blur(10px);
+        z-index: 1000;
+      }
+
+      #action-panel h2 {
+        font-size: 14px;
+        color: #0f8;
+        margin-bottom: 15px;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+      }
+
+      #action-log {
+        font-family: "Consolas", monospace;
+        font-size: 11px;
+        max-height: 120px;
+        overflow-y: auto;
+      }
+
+      .action-entry {
+        margin-bottom: 5px;
+        padding: 5px;
+        background: rgba(0, 255, 100, 0.1);
+        border-radius: 4px;
+        animation: slideIn 0.3s ease;
+      }
+
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateX(-10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+
+      .action-entry .step {
+        color: #888;
+      }
+      .action-entry .action {
+        color: #0f8;
+        font-weight: bold;
+      }
+      .action-entry .reason {
+        color: #8f8;
+        font-size: 10px;
+      }
+
+      .action-entry.fault-inject {
+        background: rgba(255, 50, 50, 0.3);
+        border-left: 3px solid #f44;
+      }
+      .action-entry.fault-inject .action {
+        color: #f66;
+      }
+
+      .action-entry.recovery-action {
+        background: rgba(0, 200, 255, 0.2);
+        border-left: 3px solid #0af;
+      }
+      .action-entry.recovery-action .action {
+        color: #0cf;
+      }
+
+      /* Fault Injection Panel */
+      #inject-panel {
+        position: fixed;
+        top: 50%;
+        right: 20px;
+        transform: translateY(-50%);
+        background: rgba(40, 0, 0, 0.85);
+        border: 1px solid rgba(255, 100, 0, 0.4);
+        border-radius: 12px;
+        padding: 15px;
+        color: #fff;
+        backdrop-filter: blur(10px);
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      #inject-panel h2 {
+        font-size: 12px;
+        color: #f80;
+        margin-bottom: 5px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        text-align: center;
+      }
+
+      .inject-btn {
+        padding: 8px 12px;
+        border: 2px solid;
+        border-radius: 6px;
+        background: rgba(0, 0, 0, 0.5);
+        color: #fff;
+        font-size: 12px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-family: "Consolas", monospace;
+      }
+
+      .inject-btn:hover {
+        transform: scale(1.05);
+      }
+
+      .inject-btn:active {
+        transform: scale(0.95);
+      }
+
+      .inject-btn.seu {
+        border-color: #00aaff;
+        color: #00aaff;
+      }
+      .inject-btn.seu:hover {
+        background: rgba(0, 170, 255, 0.3);
+        box-shadow: 0 0 15px rgba(0, 170, 255, 0.5);
+      }
+
+      .inject-btn.latchup {
+        border-color: #ff3366;
+        color: #ff3366;
+      }
+      .inject-btn.latchup:hover {
+        background: rgba(255, 51, 102, 0.3);
+        box-shadow: 0 0 15px rgba(255, 51, 102, 0.5);
+      }
+
+      .inject-btn.thermal {
+        border-color: #ff8800;
+        color: #ff8800;
+      }
+      .inject-btn.thermal:hover {
+        background: rgba(255, 136, 0, 0.3);
+        box-shadow: 0 0 15px rgba(255, 136, 0, 0.5);
+      }
+
+      .inject-btn.memory {
+        border-color: #00ff88;
+        color: #00ff88;
+      }
+      .inject-btn.memory:hover {
+        background: rgba(0, 255, 136, 0.3);
+        box-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+      }
+
+      .inject-btn.power {
+        border-color: #ffff00;
+        color: #ffff00;
+      }
+      .inject-btn.power:hover {
+        background: rgba(255, 255, 0, 0.3);
+        box-shadow: 0 0 15px rgba(255, 255, 0, 0.5);
+      }
+
+      /* Stats Panel */
+      #stats-panel {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: rgba(20, 0, 40, 0.85);
+        border: 1px solid rgba(150, 0, 255, 0.3);
+        border-radius: 12px;
+        padding: 20px;
+        color: #fff;
+        min-width: 200px;
+        backdrop-filter: blur(10px);
+        z-index: 1000;
+      }
+
+      #stats-panel h2 {
+        font-size: 14px;
+        color: #a0f;
+        margin-bottom: 15px;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+      }
+
+      .stat-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        font-size: 14px;
+      }
+
+      .stat-value {
+        font-family: "Consolas", monospace;
+        color: #fff;
+        font-weight: bold;
+      }
+
+      /* Causal RL Chart Panel */
+      #chart-panel {
+        position: fixed;
+        bottom: 240px;
+        left: 20px;
+        background: rgba(0, 30, 60, 0.9);
+        border: 1px solid rgba(0, 200, 255, 0.4);
+        border-radius: 12px;
+        padding: 15px;
+        color: #fff;
+        width: 420px;
+        backdrop-filter: blur(10px);
+        z-index: 1000;
+      }
+
+      #chart-panel h2 {
+        font-size: 13px;
+        color: #0cf;
+        margin-bottom: 10px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      #fault-chart {
+        width: 100%;
+        height: 120px;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 8px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      #chart-canvas {
+        width: 100%;
+        height: 100%;
+      }
+
+      .chart-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 10px;
+        font-size: 10px;
+      }
+
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .legend-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+      }
+
+      .legend-dot.fault {
+        background: #ff4444;
+      }
+      .legend-dot.recovery {
+        background: #44ff88;
+      }
+      .legend-dot.reward {
+        background: #ffaa00;
+      }
+
+      /* Profile Selector */
+      #profile-panel {
+        position: fixed;
+        top: 80px;
+        right: 240px;
+        background: rgba(30, 20, 50, 0.9);
+        border: 1px solid rgba(180, 100, 255, 0.4);
+        border-radius: 10px;
+        padding: 12px 15px;
+        color: #fff;
+        backdrop-filter: blur(10px);
+        z-index: 1000;
+      }
+
+      #profile-panel label {
+        font-size: 11px;
+        color: #c8f;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        display: block;
+        margin-bottom: 6px;
+      }
+
+      #profile-select {
+        background: rgba(0, 0, 0, 0.5);
+        border: 2px solid rgba(180, 100, 255, 0.5);
+        border-radius: 6px;
+        color: #fff;
+        padding: 8px 12px;
+        font-size: 12px;
+        font-family: "Consolas", monospace;
+        cursor: pointer;
+        min-width: 140px;
+        outline: none;
+        transition: all 0.2s ease;
+      }
+
+      #profile-select:hover {
+        border-color: #c8f;
+        box-shadow: 0 0 10px rgba(180, 100, 255, 0.3);
+      }
+
+      #profile-select option {
+        background: #1a1030;
+        color: #fff;
+        padding: 5px;
+      }
+
+      /* Controls */
+      #controls {
+        position: fixed;
+        top: 20px;
+        right: 240px;
+        display: flex;
+        flex-direction: row;
+        gap: 10px;
+        z-index: 1000;
+      }
+
+      .control-btn {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        background: rgba(0, 0, 0, 0.5);
+        color: #fff;
+        font-size: 20px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        backdrop-filter: blur(5px);
+      }
+
+      .control-btn:hover {
+        background: rgba(0, 150, 255, 0.3);
+        border-color: #0af;
+      }
+
+      /* Loading */
+      #loading {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: #000;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+        transition: opacity 0.5s ease;
+      }
+
+      #loading.hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .loading-spinner {
+        width: 60px;
+        height: 60px;
+        border: 3px solid #0af;
+        border-top-color: transparent;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      #loading h1 {
+        margin-top: 30px;
+        color: #0af;
+        font-size: 24px;
+        letter-spacing: 4px;
+      }
+
+      #loading p {
+        margin-top: 10px;
+        color: #888;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Loading Screen -->
+    <div id="loading">
+      <div class="loading-spinner"></div>
+      <h1>TITAN</h1>
+      <p>Initializing Earth-Satellite Simulation...</p>
+    </div>
+
+    <!-- 3D Canvas -->
+    <div id="app"></div>
+
+    <!-- Telemetry Panel -->
+    <div id="telemetry-panel">
+      <h2>📡 Telemetry</h2>
+      <div id="telemetry-rows"></div>
+    </div>
+
+    <!-- Fault Panel -->
+    <div id="fault-panel">
+      <h2>⚠️ Fault Status</h2>
+      <div class="fault-indicator">
+        <div class="fault-dot" id="fault-seu"></div>
+        <span>SEU (Single Event Upset)</span>
+      </div>
+      <div class="fault-indicator">
+        <div class="fault-dot" id="fault-latchup"></div>
+        <span>Latch-up</span>
+      </div>
+      <div class="fault-indicator">
+        <div class="fault-dot" id="fault-thermal"></div>
+        <span>Thermal Runaway</span>
+      </div>
+      <div class="fault-indicator">
+        <div class="fault-dot" id="fault-memory"></div>
+        <span>Memory Fault</span>
+      </div>
+      <div class="fault-indicator">
+        <div class="fault-dot" id="fault-power"></div>
+        <span>Power Fault</span>
+      </div>
+    </div>
+
+    <!-- Fault Injection Panel -->
+    <div id="inject-panel">
+      <h2>⚡ Inject Fault</h2>
+      <button
+        class="inject-btn seu"
+        id="btn-inject-seu"
+        title="Single Event Upset"
+      >
+        SEU
+      </button>
+      <button
+        class="inject-btn latchup"
+        id="btn-inject-latchup"
+        title="Latch-up"
+      >
+        LATCH
+      </button>
+      <button
+        class="inject-btn thermal"
+        id="btn-inject-thermal"
+        title="Thermal Runaway"
+      >
+        THERM
+      </button>
+      <button
+        class="inject-btn memory"
+        id="btn-inject-memory"
+        title="Memory Fault"
+      >
+        MEM
+      </button>
+      <button
+        class="inject-btn power"
+        id="btn-inject-power"
+        title="Power Fault"
+      >
+        PWR
+      </button>
+    </div>
+
+    <!-- Action Log -->
+    <div id="action-panel">
+      <h2>🤖 Causal RL Agent</h2>
+      <div id="action-log"></div>
+    </div>
+
+    <!-- Stats Panel -->
+    <div id="stats-panel">
+      <h2>📊 Statistics</h2>
+      <div class="stat-row">
+        <span>Step</span>
+        <span class="stat-value" id="stat-step">0</span>
+      </div>
+      <div class="stat-row">
+        <span>Episode</span>
+        <span class="stat-value" id="stat-episode">1</span>
+      </div>
+      <div class="stat-row">
+        <span>Total Reward</span>
+        <span class="stat-value" id="stat-reward">0.00</span>
+      </div>
+      <div class="stat-row">
+        <span>Faults Recovered</span>
+        <span class="stat-value" id="stat-recovered">0</span>
+      </div>
+    </div>
+
+    <!-- Causal RL Chart Panel -->
+    <div id="chart-panel">
+      <h2>📈 Causal RL Fault Recovery</h2>
+      <div id="fault-chart">
+        <canvas id="chart-canvas"></canvas>
+      </div>
+      <div class="chart-legend">
+        <div class="legend-item">
+          <div class="legend-dot fault"></div>
+          <span>Fault Injected</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot recovery"></div>
+          <span>Recovery Action</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot reward"></div>
+          <span>Reward</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Radiation Profile Selector -->
+    <div id="profile-panel">
+      <label>🌌 Radiation Profile</label>
+      <select id="profile-select">
+        <option value="none" selected>None (Manual Only)</option>
+        <option value="low">Low Radiation</option>
+        <option value="medium">Medium Radiation</option>
+        <option value="high">High Radiation</option>
+        <option value="storm">Solar Storm</option>
+      </select>
+    </div>
+
+    <!-- Controls -->
+    <div id="controls">
+      <button class="control-btn" id="btn-pause" title="Pause/Resume">⏸</button>
+      <button class="control-btn" id="btn-speed" title="Speed">4x</button>
+      <button class="control-btn" id="btn-reset" title="Reset">↺</button>
+      <button class="control-btn" id="btn-music" title="Play Music">🔇</button>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

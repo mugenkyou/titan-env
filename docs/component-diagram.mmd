@@ -1,4 +1,12 @@
 flowchart TB
+    subgraph Training["🎓 RL Training Pipeline"]
+        TR1["TITAN Env\n(Trajectory Collection)"]
+        TR2["reward_v2.py\n(Multi-Objective Signal)"]
+        TR3["GRPO Training\n(Unsloth + TRL)"]
+        TR4["Qwen2.5-1.5B\n(Fine-tuned Model)"]
+        TR5["Checkpoint\nmodels/grpo_titan_final"]
+    end
+
     subgraph Clients[Clients]
         U1[Inference Runner]
         U2[OpenEnv Validator]
@@ -49,6 +57,15 @@ flowchart TB
         D3[scripts/hardening_check.py]
     end
 
+    %% Training Flow
+    TR1 --> TR2
+    TR2 --> TR3
+    TR3 --> TR4
+    TR4 --> TR5
+    TR5 -.->|loads| O3
+    C5 -.->|feeds| TR2
+
+    %% Inference Flow
     U1 --> O1
     O1 --> T1
     T1 --> T2
@@ -61,6 +78,7 @@ flowchart TB
     T4 --> T5
     O1 --> I1
 
+    %% Service Flow
     U2 --> S1
     U3 --> S1
     S1 --> S2
@@ -69,6 +87,7 @@ flowchart TB
     S1 --> S5
     S1 --> I1
 
+    %% Interface to Core
     I1 --> I2
     I1 --> I3
     I1 --> C1
@@ -77,6 +96,7 @@ flowchart TB
     C1 --> C4
     C1 --> C5
 
+    %% Deployment
     D1 --> S1
     D2 --> U2
     D3 --> U1

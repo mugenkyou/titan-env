@@ -1,0 +1,723 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TITAN Detailed Analysis Console</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #06090f;
+        --bg-alt: #0b1320;
+        --panel: rgba(14, 24, 39, 0.9);
+        --panel-border: rgba(105, 152, 214, 0.22);
+        --grid: rgba(132, 169, 216, 0.14);
+        --text: #e3eefc;
+        --muted: #94adc9;
+        --normal: #23c5a8;
+        --warn: #f6b64a;
+        --critical: #ff646e;
+        --accent: #51b7ff;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(
+            circle at 80% 15%,
+            rgba(35, 89, 150, 0.22) 0%,
+            rgba(6, 9, 15, 0) 45%
+          ),
+          radial-gradient(
+            circle at 12% 88%,
+            rgba(31, 90, 78, 0.2) 0%,
+            rgba(6, 9, 15, 0) 45%
+          ),
+          linear-gradient(145deg, #04070d 0%, #050b15 40%, #091523 100%);
+        min-height: 100vh;
+        overflow: hidden;
+      }
+
+      .page {
+        height: 100vh;
+        display: grid;
+        grid-template-rows: 68px 1fr;
+      }
+
+      .topbar {
+        border-bottom: 1px solid var(--panel-border);
+        background: rgba(2, 8, 15, 0.88);
+        backdrop-filter: blur(12px);
+        display: grid;
+        grid-template-columns: 1.2fr 2fr 1.4fr;
+        align-items: center;
+        gap: 14px;
+        padding: 0 16px;
+      }
+
+      .brand h1 {
+        font-size: 15px;
+        font-weight: 700;
+        letter-spacing: 1.2px;
+      }
+
+      .brand p {
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .status-strip {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .status-card {
+        border: 1px solid var(--panel-border);
+        background: rgba(11, 19, 31, 0.75);
+        border-radius: 8px;
+        padding: 8px 10px;
+      }
+
+      .status-label {
+        color: var(--muted);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 1.1px;
+      }
+
+      .status-value {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 15px;
+        margin-top: 2px;
+      }
+
+      .top-controls {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 10px;
+      }
+
+      select,
+      button,
+      input[type="range"] {
+        font: inherit;
+      }
+
+      .selector,
+      .btn {
+        border: 1px solid rgba(106, 156, 222, 0.35);
+        background: rgba(9, 15, 25, 0.85);
+        color: var(--text);
+        border-radius: 7px;
+        padding: 7px 10px;
+        font-size: 12px;
+      }
+
+      .btn {
+        cursor: pointer;
+        transition:
+          transform 120ms ease,
+          border-color 120ms ease;
+      }
+
+      .btn:hover {
+        border-color: var(--accent);
+        transform: translateY(-1px);
+      }
+
+      .console {
+        padding: 12px;
+        display: grid;
+        grid-template-columns: 1.15fr 1.15fr 1fr;
+        grid-template-rows: 1.05fr 1fr;
+        gap: 12px;
+        min-height: 0;
+      }
+
+      .panel {
+        border: 1px solid var(--panel-border);
+        background: var(--panel);
+        border-radius: 10px;
+        padding: 10px;
+        min-height: 0;
+        display: grid;
+        grid-template-rows: auto 1fr;
+      }
+
+      .panel h2 {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 1.2px;
+        color: #9bc8ff;
+        margin-bottom: 8px;
+      }
+
+      .panel-grid {
+        display: grid;
+        gap: 8px;
+        min-height: 0;
+      }
+
+      .telemetry {
+        grid-column: 1;
+        grid-row: 1;
+      }
+
+      .simulation {
+        grid-column: 2;
+        grid-row: 1;
+      }
+
+      .agent {
+        grid-column: 3;
+        grid-row: 1;
+      }
+
+      .mapping {
+        grid-column: 1;
+        grid-row: 2;
+      }
+
+      .analytics {
+        grid-column: 2;
+        grid-row: 2;
+      }
+
+      .environment {
+        grid-column: 3;
+        grid-row: 2;
+      }
+
+      .chart-block {
+        border: 1px solid rgba(85, 128, 179, 0.25);
+        border-radius: 8px;
+        background: rgba(6, 14, 24, 0.8);
+        padding: 7px;
+      }
+
+      .chart-block h3 {
+        font-size: 11px;
+        margin-bottom: 5px;
+        color: #bfd9f8;
+      }
+
+      canvas {
+        width: 100%;
+        height: 120px;
+        border-radius: 6px;
+        background:
+          linear-gradient(transparent 95%, var(--grid) 95%),
+          linear-gradient(90deg, transparent 95%, var(--grid) 95%);
+        background-size:
+          100% 22px,
+          34px 100%;
+      }
+
+      .impact-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .impact-chip {
+        border: 1px solid rgba(97, 141, 194, 0.25);
+        background: rgba(11, 19, 30, 0.9);
+        border-radius: 8px;
+        padding: 8px;
+      }
+
+      .impact-chip .name {
+        color: var(--muted);
+        font-size: 10px;
+        text-transform: uppercase;
+      }
+
+      .impact-chip .delta {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 14px;
+        margin-top: 4px;
+      }
+
+      .flow {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr auto 1fr;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+
+      .flow-card {
+        border: 1px solid rgba(91, 136, 189, 0.3);
+        background: rgba(7, 15, 24, 0.92);
+        border-radius: 8px;
+        padding: 8px;
+        min-height: 64px;
+      }
+
+      .flow-card .title {
+        color: var(--muted);
+        font-size: 10px;
+        text-transform: uppercase;
+        margin-bottom: 4px;
+      }
+
+      .flow-card .value {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 12px;
+      }
+
+      .arrow {
+        color: #76bfff;
+        font-size: 16px;
+      }
+
+      .system-map {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+
+      .node {
+        border: 1px solid rgba(92, 136, 190, 0.28);
+        border-radius: 8px;
+        background: rgba(6, 14, 23, 0.88);
+        padding: 8px;
+      }
+
+      .node h3 {
+        font-size: 11px;
+        margin-bottom: 5px;
+      }
+
+      .node p {
+        font-size: 11px;
+        color: #b8d2ef;
+      }
+
+      .node.normal {
+        box-shadow: inset 0 0 0 1px rgba(35, 197, 168, 0.24);
+      }
+
+      .node.warn {
+        box-shadow: inset 0 0 0 1px rgba(246, 182, 74, 0.32);
+      }
+
+      .node.critical {
+        box-shadow: inset 0 0 0 1px rgba(255, 100, 110, 0.45);
+      }
+
+      .metric-bars {
+        display: grid;
+        gap: 8px;
+      }
+
+      .bar-row {
+        display: grid;
+        grid-template-columns: 140px 1fr 60px;
+        align-items: center;
+        gap: 8px;
+        font-size: 11px;
+      }
+
+      .bar-track {
+        height: 8px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.1);
+        overflow: hidden;
+      }
+
+      .bar-fill {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, var(--normal), #7af2ca);
+        transition: width 220ms linear;
+      }
+
+      .bar-fill.warn {
+        background: linear-gradient(90deg, #c58a2a, var(--warn));
+      }
+
+      .bar-fill.critical {
+        background: linear-gradient(90deg, #c2414f, var(--critical));
+      }
+
+      .timeline {
+        height: 100px;
+      }
+
+      .fault-list {
+        display: grid;
+        gap: 6px;
+        max-height: 120px;
+        overflow: auto;
+      }
+
+      .fault-item {
+        border-left: 3px solid rgba(81, 183, 255, 0.5);
+        background: rgba(8, 16, 27, 0.85);
+        padding: 7px;
+        border-radius: 5px;
+        font-size: 11px;
+      }
+
+      .fault-item strong {
+        color: #d2e7ff;
+      }
+
+      .critical-text {
+        color: var(--critical);
+      }
+
+      @media (max-width: 1280px) {
+        body {
+          overflow: auto;
+        }
+
+        .page {
+          min-height: 100vh;
+          height: auto;
+        }
+
+        .console {
+          grid-template-columns: 1fr;
+          grid-template-rows: repeat(6, minmax(360px, auto));
+        }
+
+        .telemetry,
+        .simulation,
+        .agent,
+        .mapping,
+        .analytics,
+        .environment {
+          grid-column: 1;
+        }
+
+        .telemetry {
+          grid-row: 1;
+        }
+        .simulation {
+          grid-row: 2;
+        }
+        .agent {
+          grid-row: 3;
+        }
+        .mapping {
+          grid-row: 4;
+        }
+        .analytics {
+          grid-row: 5;
+        }
+        .environment {
+          grid-row: 6;
+        }
+
+        .topbar {
+          grid-template-columns: 1fr;
+          height: auto;
+          padding: 10px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header class="topbar">
+        <div class="brand">
+          <h1>TITAN DETAILED ANALYSIS CONSOLE</h1>
+          <p>
+            Live telemetry, causal response, and fault propagation engineering
+            view
+          </p>
+        </div>
+        <div class="status-strip">
+          <div class="status-card">
+            <div class="status-label">WebSocket</div>
+            <div class="status-value" id="ws-status">CONNECTING</div>
+          </div>
+          <div class="status-card">
+            <div class="status-label">Step</div>
+            <div class="status-value" id="status-step">0</div>
+          </div>
+          <div class="status-card">
+            <div class="status-label">Episode</div>
+            <div class="status-value" id="status-episode">1</div>
+          </div>
+          <div class="status-card">
+            <div class="status-label">Total Reward</div>
+            <div class="status-value" id="status-reward">0.00</div>
+          </div>
+        </div>
+        <div class="top-controls">
+          <select id="profile-select" class="selector">
+            <option value="none">Radiation: Manual</option>
+            <option value="low">Radiation: Low</option>
+            <option value="medium">Radiation: Medium</option>
+            <option value="high">Radiation: High</option>
+            <option value="storm">Radiation: Solar Storm</option>
+          </select>
+          <button id="btn-reset" class="btn">Reset Episode</button>
+          <button id="btn-pause" class="btn">Pause</button>
+        </div>
+      </header>
+
+      <main class="console">
+        <section class="panel telemetry">
+          <h2>1. Advanced Telemetry Visualization</h2>
+          <div class="panel-grid">
+            <div class="chart-block">
+              <h3>Power System: Battery SOC, Voltage, Current</h3>
+              <canvas id="chart-power" height="120"></canvas>
+            </div>
+            <div class="chart-block">
+              <h3>Thermal System: CPU Temp, Power Temp</h3>
+              <canvas id="chart-thermal" height="120"></canvas>
+            </div>
+            <div class="chart-block">
+              <h3>Compute System: CPU Load, Memory Integrity</h3>
+              <canvas id="chart-compute" height="120"></canvas>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel simulation">
+          <h2>2. Fault Injection and Simulation Panel</h2>
+          <div class="panel-grid">
+            <div
+              style="
+                display: grid;
+                grid-template-columns: 1fr 1fr 1fr auto;
+                gap: 8px;
+                align-items: center;
+              "
+            >
+              <select id="fault-type" class="selector">
+                <option value="SEU">SEU</option>
+                <option value="LATCH_UP">Latch-up</option>
+                <option value="THERMAL">Thermal Runaway</option>
+                <option value="MEMORY">Memory Fault</option>
+                <option value="POWER">Power Fault</option>
+              </select>
+              <select id="fault-intensity" class="selector">
+                <option value="1">Intensity: Low</option>
+                <option value="2" selected>Intensity: Medium</option>
+                <option value="3">Intensity: High</option>
+              </select>
+              <select id="fault-frequency" class="selector">
+                <option value="500">Burst 0.5s</option>
+                <option value="1000" selected>Burst 1.0s</option>
+                <option value="1500">Burst 1.5s</option>
+              </select>
+              <button id="btn-inject" class="btn">Inject</button>
+            </div>
+            <div class="impact-grid">
+              <div class="impact-chip">
+                <div class="name">Immediate Impact</div>
+                <div class="delta" id="impact-immediate">-</div>
+              </div>
+              <div class="impact-chip">
+                <div class="name">Propagation</div>
+                <div class="delta" id="impact-propagation">-</div>
+              </div>
+              <div class="impact-chip">
+                <div class="name">Recovery ETA</div>
+                <div class="delta" id="impact-recovery">-</div>
+              </div>
+            </div>
+            <div class="chart-block">
+              <h3>Recovery Timeline</h3>
+              <canvas
+                id="chart-recovery"
+                class="timeline"
+                height="100"
+              ></canvas>
+            </div>
+            <div class="fault-list" id="fault-events"></div>
+          </div>
+        </section>
+
+        <section class="panel agent">
+          <h2>3. Causal RL Agent Visualization</h2>
+          <div class="panel-grid">
+            <div class="flow">
+              <div class="flow-card">
+                <div class="title">State</div>
+                <div class="value" id="flow-state">Nominal</div>
+              </div>
+              <div class="arrow">→</div>
+              <div class="flow-card">
+                <div class="title">Action</div>
+                <div class="value" id="flow-action">NO_ACTION</div>
+              </div>
+              <div class="arrow">→</div>
+              <div class="flow-card">
+                <div class="title">Reward</div>
+                <div class="value" id="flow-reward">0.000</div>
+              </div>
+            </div>
+            <div class="chart-block">
+              <h3>Causal Reasoning Graph (Simplified)</h3>
+              <canvas id="chart-causal" height="120"></canvas>
+            </div>
+            <div class="chart-block">
+              <h3>Reward Progression</h3>
+              <canvas id="chart-reward" height="120"></canvas>
+            </div>
+            <div class="chart-block">
+              <h3>Episode Progression</h3>
+              <canvas id="chart-episode" height="100"></canvas>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel mapping">
+          <h2>4. Fault Status and Recovery Mapping</h2>
+          <div class="panel-grid">
+            <div class="system-map">
+              <div class="node" id="node-power">
+                <h3>POWER</h3>
+                <p id="node-power-text">Nominal bus voltage and load</p>
+              </div>
+              <div class="node" id="node-thermal">
+                <h3>THERMAL</h3>
+                <p id="node-thermal-text">Controlled temperatures</p>
+              </div>
+              <div class="node" id="node-compute">
+                <h3>COMPUTE</h3>
+                <p id="node-compute-text">CPU and memory stable</p>
+              </div>
+            </div>
+            <div class="chart-block">
+              <h3>Action Taken</h3>
+              <div
+                id="action-explain"
+                style="
+                  font-family: &quot;JetBrains Mono&quot;, monospace;
+                  font-size: 12px;
+                  color: #d8e8fb;
+                  line-height: 1.45;
+                "
+              >
+                Awaiting action...
+              </div>
+            </div>
+            <div class="chart-block">
+              <h3>Recovery Success / Failure</h3>
+              <canvas id="chart-success" height="120"></canvas>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel analytics">
+          <h2>5. Statistics and Performance Analytics</h2>
+          <div class="panel-grid">
+            <div class="metric-bars">
+              <div class="bar-row">
+                <div>Fault Recovery Rate</div>
+                <div class="bar-track">
+                  <div id="bar-recovery-rate" class="bar-fill"></div>
+                </div>
+                <div id="txt-recovery-rate">0%</div>
+              </div>
+              <div class="bar-row">
+                <div>Avg Recovery Time</div>
+                <div class="bar-track">
+                  <div id="bar-recovery-time" class="bar-fill"></div>
+                </div>
+                <div id="txt-recovery-time">0.0s</div>
+              </div>
+              <div class="bar-row">
+                <div>Success / Failure Ratio</div>
+                <div class="bar-track">
+                  <div id="bar-ratio" class="bar-fill"></div>
+                </div>
+                <div id="txt-ratio">0:0</div>
+              </div>
+              <div class="bar-row">
+                <div>System Stability Score</div>
+                <div class="bar-track">
+                  <div id="bar-stability" class="bar-fill"></div>
+                </div>
+                <div id="txt-stability">0</div>
+              </div>
+            </div>
+            <div class="chart-block">
+              <h3>Failure vs Success Trend</h3>
+              <canvas id="chart-outcomes" height="120"></canvas>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel environment">
+          <h2>6. Radiation and External Conditions</h2>
+          <div class="panel-grid">
+            <div
+              style="
+                display: grid;
+                grid-template-columns: 1fr auto;
+                gap: 8px;
+                align-items: center;
+              "
+            >
+              <div class="chart-block" style="padding: 10px">
+                <h3 style="margin: 0">Radiation Profile Source</h3>
+                <div
+                  id="env-profile"
+                  style="
+                    margin-top: 4px;
+                    font-family: &quot;JetBrains Mono&quot;, monospace;
+                    font-size: 12px;
+                    color: #d3e7ff;
+                  "
+                >
+                  manual
+                </div>
+              </div>
+              <button id="btn-radiation-spike" class="btn">
+                Trigger Spike
+              </button>
+            </div>
+            <div class="impact-grid">
+              <div class="impact-chip">
+                <div class="name">Radiation Index</div>
+                <div class="delta" id="env-radiation">20</div>
+              </div>
+              <div class="impact-chip">
+                <div class="name">Fault Correlation</div>
+                <div class="delta" id="env-correlation">0.00</div>
+              </div>
+              <div class="impact-chip">
+                <div class="name">Degradation Index</div>
+                <div class="delta" id="env-degradation">0.00</div>
+              </div>
+            </div>
+            <div class="chart-block">
+              <h3>Radiation vs Fault Frequency</h3>
+              <canvas id="chart-radiation" height="120"></canvas>
+            </div>
+            <div class="chart-block">
+              <h3>Stress Impact on System Health</h3>
+              <canvas id="chart-degradation" height="120"></canvas>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="/src/analysis.ts"></script>
+  </body>
+</html>
