@@ -58,6 +58,14 @@ class FaultType(enum.Enum):
     POWER_FAULT          = "POWER_FAULT"
     TELEMETRY_CORRUPTION = "TELEMETRY_CORRUPTION"
 
+TRAINING_HOLDOUT_FAULTS = frozenset(
+    {
+        FaultType.TELEMETRY_CORRUPTION,
+        FaultType.MEMORY_CORRUPTION,
+        FaultType.POWER_FAULT,
+    }
+)
+
 
 # ---------------------------------------------------------------------------
 # Fault event record
@@ -74,6 +82,7 @@ class FaultEvent:
     step              : int       — simulation timestep (= fault_timestamp)
     subsystem         : str       — primary affected subsystem label
     magnitude         : float     — sampled intensity (0–1 normalised)
+    severity_level    : int       — discrete severity level in [1, 3]
     fault_severity    : float     — alias for magnitude (dataset logging)
     fault_timestamp   : int       — alias for step (dataset logging)
     fault_subsystem   : str       — alias for subsystem (dataset logging)
@@ -83,6 +92,7 @@ class FaultEvent:
     step:           int
     subsystem:      str
     magnitude:      float
+    severity_level: int = 1
 
     @property
     def fault_severity(self) -> float:
@@ -102,6 +112,7 @@ class FaultEvent:
             "step":             self.step,
             "subsystem":        self.subsystem,
             "magnitude":        round(self.magnitude, 6),
+            "severity_level":   int(self.severity_level),
             # Dataset logging fields
             "fault_severity":   round(self.magnitude, 6),
             "fault_timestamp":  self.step,
@@ -264,10 +275,22 @@ class FaultInjector:
     profile : RadiationProfile
     """
 
-    def __init__(self, profile: RadiationProfile) -> None:
+    def __init__(
+        self,
+        profile: RadiationProfile,
+        training_mode: bool = False,
+        holdout_faults: Optional[set[FaultType]] = None,
+        severity_increment_prob: float = 0.15,
+    ) -> None:
         self._profile = profile
         self._rng: np.random.Generator = self._make_rng()
         self._fault_log: List[FaultEvent] = []
+        self._training_mode = bool(training_mode)
+        self._training_holdout_faults = (
+            set(holdout_faults) if holdout_faults is not None else set(TRAINING_HOLDOUT_FAULTS)
+        )
+        self._severity_increment_prob = float(_clamp(severity_increment_prob, lo=0.0, hi=1.0))
+        self._active_fault_severity: Dict[FaultType, int] = {}
 
     # ------------------------------------------------------------------
     # Public API
@@ -277,6 +300,7 @@ class FaultInjector:
         """Re-seed the RNG and clear the fault log. Call at episode start."""
         self._rng = self._make_rng()
         self._fault_log = []
+        self._active_fault_severity = {}
 
     def sample(
         self,
@@ -320,12 +344,18 @@ class FaultInjector:
         prob_mem_cor = _clamp(p.base_memory_rate  * ri * (1.0 + float(s_flag)),           lo=0, hi=1)
         prob_power   = _clamp(p.base_power_rate   * (1.0 + t_pwr),                       lo=0, hi=1)
 
-        # Independent Bernoulli draws
-        roll_seu     = self._rng.random() < prob_seu
-        roll_latchup = self._rng.random() < prob_latchup
-        roll_thermal = self._rng.random() < prob_thermal
-        roll_mem_cor = self._rng.random() < prob_mem_cor
-        roll_power   = self._rng.random() < prob_power
+        # Independent Bernoulli draws (optionally masked by training holdouts)
+        can_inject_seu = not self._is_holdout_during_training(FaultType.SEU)
+        can_inject_latchup = not self._is_holdout_during_training(FaultType.LATCH_UP)
+        can_inject_thermal = not self._is_holdout_during_training(FaultType.THERMAL_RUNAWAY)
+        can_inject_mem_cor = not self._is_holdout_during_training(FaultType.MEMORY_CORRUPTION)
+        can_inject_power = not self._is_holdout_during_training(FaultType.POWER_FAULT)
+
+        roll_seu     = can_inject_seu and (self._rng.random() < prob_seu)
+        roll_latchup = can_inject_latchup and (self._rng.random() < prob_latchup)
+        roll_thermal = can_inject_thermal and (self._rng.random() < prob_thermal)
+        roll_mem_cor = can_inject_mem_cor and (self._rng.random() < prob_mem_cor)
+        roll_power   = can_inject_power and (self._rng.random() < prob_power)
 
         # Copy state (preserve full Phase 2/3/5 fields)
         new_state = SubsystemState(
@@ -349,34 +379,52 @@ class FaultInjector:
         )
 
         primary_event: Optional[FaultEvent] = None
+        rolled_faults = {
+            FaultType.SEU: roll_seu,
+            FaultType.LATCH_UP: roll_latchup,
+            FaultType.THERMAL_RUNAWAY: roll_thermal,
+            FaultType.MEMORY_CORRUPTION: roll_mem_cor,
+            FaultType.POWER_FAULT: roll_power,
+        }
+        severity_levels = self._update_active_fault_severity(state, rolled_faults)
 
         # Apply faults in priority order (all that rolled)
         if roll_latchup:
-            new_state, event = self._apply_latchup(new_state, step)
+            new_state, event = self._apply_latchup(
+                new_state, step, severity_levels.get(FaultType.LATCH_UP, 1)
+            )
             self._fault_log.append(event)
             if primary_event is None:
                 primary_event = event
 
         if roll_seu:
-            new_state, event = self._apply_seu(new_state, step)
+            new_state, event = self._apply_seu(
+                new_state, step, severity_levels.get(FaultType.SEU, 1)
+            )
             self._fault_log.append(event)
             if primary_event is None:
                 primary_event = event
 
         if roll_thermal:
-            new_state, event = self._apply_thermal_runaway(new_state, step)
+            new_state, event = self._apply_thermal_runaway(
+                new_state, step, severity_levels.get(FaultType.THERMAL_RUNAWAY, 1)
+            )
             self._fault_log.append(event)
             if primary_event is None:
                 primary_event = event
 
         if roll_mem_cor:
-            new_state, event = self._apply_memory_corruption(new_state, step)
+            new_state, event = self._apply_memory_corruption(
+                new_state, step, severity_levels.get(FaultType.MEMORY_CORRUPTION, 1)
+            )
             self._fault_log.append(event)
             if primary_event is None:
                 primary_event = event
 
         if roll_power:
-            new_state, event = self._apply_power_fault(new_state, step)
+            new_state, event = self._apply_power_fault(
+                new_state, step, severity_levels.get(FaultType.POWER_FAULT, 1)
+            )
             self._fault_log.append(event)
             if primary_event is None:
                 primary_event = event
@@ -388,6 +436,8 @@ class FaultInjector:
         Sample sensor-level noise (TELEMETRY_CORRUPTION).
         True state is never modified here — obs-layer only.
         """
+        if self._is_holdout_during_training(FaultType.TELEMETRY_CORRUPTION):
+            return None
         if self._rng.random() >= self._profile.p_telemetry:
             return None
 
@@ -404,6 +454,7 @@ class FaultInjector:
             step=step,
             subsystem="telemetry",
             magnitude=noise_max,
+            severity_level=1,
         )
         self._fault_log.append(event)
         return noise
@@ -465,7 +516,7 @@ class FaultInjector:
             new_state.seu_flag = 1
             event = FaultEvent(
                 fault_type=FaultType.SEU, step=step,
-                subsystem="processing", magnitude=mag,
+                subsystem="processing", magnitude=mag, severity_level=1,
             )
         elif fault_type == FaultType.LATCH_UP:
             d_lo, d_hi = self._profile.latchup_drain_range
@@ -477,7 +528,7 @@ class FaultInjector:
             new_state.latchup_flag = 1
             event = FaultEvent(
                 fault_type=FaultType.LATCH_UP, step=step,
-                subsystem="power+thermal", magnitude=max(drain, heat),
+                subsystem="power+thermal", magnitude=max(drain, heat), severity_level=1,
             )
         elif fault_type == FaultType.THERMAL_RUNAWAY:
             rate = self._profile.thermal_runaway_rate * magnitude
@@ -486,7 +537,7 @@ class FaultInjector:
             new_state.thermal_fault_flag = 1
             event = FaultEvent(
                 fault_type=FaultType.THERMAL_RUNAWAY, step=step,
-                subsystem="thermal", magnitude=mag,
+                subsystem="thermal", magnitude=mag, severity_level=1,
             )
         elif fault_type == FaultType.MEMORY_CORRUPTION:
             rate = self._profile.memory_corruption_rate * magnitude
@@ -495,7 +546,7 @@ class FaultInjector:
             new_state.memory_fault_flag = 1
             event = FaultEvent(
                 fault_type=FaultType.MEMORY_CORRUPTION, step=step,
-                subsystem="memory", magnitude=mag,
+                subsystem="memory", magnitude=mag, severity_level=1,
             )
         elif fault_type == FaultType.POWER_FAULT:
             vn = self._profile.power_fault_voltage_noise * magnitude
@@ -506,7 +557,7 @@ class FaultInjector:
             new_state.power_fault_flag = 1
             event = FaultEvent(
                 fault_type=FaultType.POWER_FAULT, step=step,
-                subsystem="power", magnitude=abs(noise) + drain,
+                subsystem="power", magnitude=abs(noise) + drain, severity_level=1,
             )
         else:
             # Fallback: treat as SEU
@@ -515,7 +566,7 @@ class FaultInjector:
             new_state.cpu_health = _clamp(new_state.cpu_health - mag)
             event = FaultEvent(
                 fault_type=fault_type, step=step,
-                subsystem="unknown", magnitude=mag,
+                subsystem="unknown", magnitude=mag, severity_level=1,
             )
         
         self._fault_log.append(event)
@@ -548,6 +599,19 @@ class FaultInjector:
         """The active radiation profile."""
         return self._profile
 
+    @property
+    def training_mode(self) -> bool:
+        return self._training_mode
+
+    @training_mode.setter
+    def training_mode(self, value: bool) -> None:
+        self._training_mode = bool(value)
+
+    @property
+    def active_fault_severity(self) -> Dict[FaultType, int]:
+        """Current per-fault severity levels for active injected fault types."""
+        return dict(self._active_fault_severity)
+
     # ------------------------------------------------------------------
     # Private fault mechanics
     # ------------------------------------------------------------------
@@ -556,18 +620,20 @@ class FaultInjector:
         self,
         state: SubsystemState,
         step:  int,
+        severity_level: int = 1,
     ) -> Tuple[SubsystemState, FaultEvent]:
         """
         Single Event Upset: impulse drop to cpu_health.
         Sets seu_flag=1 so state_model physics adds memory damage next step.
         """
         lo, hi    = self._profile.seu_mag_range
-        magnitude = float(self._rng.uniform(lo, hi))
+        severity_scale = 1.0 + 0.5 * (max(1, min(3, severity_level)) - 1)
+        magnitude = float(self._rng.uniform(lo, hi)) * severity_scale
         state.cpu_health = _clamp(state.cpu_health - magnitude)
         state.seu_flag   = 1
         event = FaultEvent(
             fault_type=FaultType.SEU, step=step,
-            subsystem="processing", magnitude=magnitude,
+            subsystem="processing", magnitude=magnitude, severity_level=max(1, min(3, severity_level)),
         )
         return state, event
 
@@ -575,6 +641,7 @@ class FaultInjector:
         self,
         state: SubsystemState,
         step:  int,
+        severity_level: int = 1,
     ) -> Tuple[SubsystemState, FaultEvent]:
         """
         Latch-up: power surge + thermal spike.
@@ -582,15 +649,16 @@ class FaultInjector:
         """
         d_lo, d_hi = self._profile.latchup_drain_range
         h_lo, h_hi = self._profile.latchup_heat_range
-        extra_drain = float(self._rng.uniform(d_lo, d_hi))
-        heat_spike  = float(self._rng.uniform(h_lo, h_hi))
+        severity_scale = 1.0 + 0.5 * (max(1, min(3, severity_level)) - 1)
+        extra_drain = float(self._rng.uniform(d_lo, d_hi)) * severity_scale
+        heat_spike  = float(self._rng.uniform(h_lo, h_hi)) * severity_scale
         state.battery_level  = _clamp(state.battery_level - extra_drain)
         state.temperature    = _clamp(state.temperature   + heat_spike)
         state.latchup_flag   = 1
         magnitude = max(extra_drain, heat_spike)
         event = FaultEvent(
             fault_type=FaultType.LATCH_UP, step=step,
-            subsystem="power+thermal", magnitude=magnitude,
+            subsystem="power+thermal", magnitude=magnitude, severity_level=max(1, min(3, severity_level)),
         )
         return state, event
 
@@ -598,19 +666,21 @@ class FaultInjector:
         self,
         state: SubsystemState,
         step:  int,
+        severity_level: int = 1,
     ) -> Tuple[SubsystemState, FaultEvent]:
         """
         Thermal runaway: direct cpu_temperature spike.
         Sets thermal_fault_flag=1 for physics propagation.
         Effect: cpu_temperature += runaway_rate (absorbed by thermal equation).
         """
-        rate      = self._profile.thermal_runaway_rate
+        severity_scale = 1.0 + 0.5 * (max(1, min(3, severity_level)) - 1)
+        rate      = self._profile.thermal_runaway_rate * severity_scale
         magnitude = float(self._rng.uniform(rate * 0.5, rate * 1.5))
         state.cpu_temperature    = _clamp(state.cpu_temperature    + magnitude)
         state.thermal_fault_flag = 1
         event = FaultEvent(
             fault_type=FaultType.THERMAL_RUNAWAY, step=step,
-            subsystem="thermal", magnitude=magnitude,
+            subsystem="thermal", magnitude=magnitude, severity_level=max(1, min(3, severity_level)),
         )
         return state, event
 
@@ -618,19 +688,21 @@ class FaultInjector:
         self,
         state: SubsystemState,
         step:  int,
+        severity_level: int = 1,
     ) -> Tuple[SubsystemState, FaultEvent]:
         """
         Severe memory corruption: direct memory_integrity drop.
         Sets memory_fault_flag=1 for physics propagation.
         Effect: memory_integrity -= corruption_rate (more severe than SEU).
         """
-        rate      = self._profile.memory_corruption_rate
+        severity_scale = 1.0 + 0.5 * (max(1, min(3, severity_level)) - 1)
+        rate      = self._profile.memory_corruption_rate * severity_scale
         magnitude = float(self._rng.uniform(rate * 0.5, rate * 1.5))
         state.memory_integrity = _clamp(state.memory_integrity - magnitude)
         state.memory_fault_flag = 1
         event = FaultEvent(
             fault_type=FaultType.MEMORY_CORRUPTION, step=step,
-            subsystem="memory", magnitude=magnitude,
+            subsystem="memory", magnitude=magnitude, severity_level=max(1, min(3, severity_level)),
         )
         return state, event
 
@@ -638,14 +710,16 @@ class FaultInjector:
         self,
         state: SubsystemState,
         step:  int,
+        severity_level: int = 1,
     ) -> Tuple[SubsystemState, FaultEvent]:
         """
         Voltage regulator fault: voltage fluctuation + battery drain.
         Sets power_fault_flag=1 for physics propagation.
         Effect: voltage += noise, battery_soc -= drain.
         """
-        vn    = self._profile.power_fault_voltage_noise
-        drain = self._profile.power_fault_battery_drain
+        severity_scale = 1.0 + 0.5 * (max(1, min(3, severity_level)) - 1)
+        vn    = self._profile.power_fault_voltage_noise * severity_scale
+        drain = self._profile.power_fault_battery_drain * severity_scale
         noise = float(self._rng.uniform(-vn, vn))
         state.voltage      = _clamp(state.voltage      + noise)
         state.battery_soc  = _clamp(state.battery_soc  - drain)
@@ -653,9 +727,52 @@ class FaultInjector:
         magnitude = abs(noise) + drain
         event = FaultEvent(
             fault_type=FaultType.POWER_FAULT, step=step,
-            subsystem="power", magnitude=magnitude,
+            subsystem="power", magnitude=magnitude, severity_level=max(1, min(3, severity_level)),
         )
         return state, event
+
+    def _is_holdout_during_training(self, fault_type: FaultType) -> bool:
+        return self._training_mode and fault_type in self._training_holdout_faults
+
+    def _update_active_fault_severity(
+        self,
+        state: SubsystemState,
+        rolled_faults: Dict[FaultType, bool],
+    ) -> Dict[FaultType, int]:
+        updated: Dict[FaultType, int] = {}
+        tracked_faults = (
+            FaultType.SEU,
+            FaultType.LATCH_UP,
+            FaultType.THERMAL_RUNAWAY,
+            FaultType.MEMORY_CORRUPTION,
+            FaultType.POWER_FAULT,
+        )
+        for fault in tracked_faults:
+            if self._is_holdout_during_training(fault):
+                continue
+            active_now = bool(rolled_faults.get(fault, False)) or self._state_fault_active(state, fault)
+            if not active_now:
+                continue
+            level = self._active_fault_severity.get(fault, 1)
+            if level < 3 and (self._rng.random() < self._severity_increment_prob):
+                level += 1
+            updated[fault] = level
+        self._active_fault_severity = updated
+        return dict(updated)
+
+    @staticmethod
+    def _state_fault_active(state: SubsystemState, fault: FaultType) -> bool:
+        if fault == FaultType.SEU:
+            return bool(state.seu_flag)
+        if fault == FaultType.LATCH_UP:
+            return bool(state.latchup_flag)
+        if fault == FaultType.THERMAL_RUNAWAY:
+            return bool(state.thermal_fault_flag)
+        if fault == FaultType.MEMORY_CORRUPTION:
+            return bool(state.memory_fault_flag)
+        if fault == FaultType.POWER_FAULT:
+            return bool(state.power_fault_flag)
+        return False
 
     # ------------------------------------------------------------------
     # Helpers

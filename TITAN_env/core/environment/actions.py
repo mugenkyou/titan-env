@@ -12,7 +12,7 @@ Backward-compat aliases keep all Phase 1–3 tests green without editing them:
     REDUCE_LOAD   = LOAD_SHEDDING
     COOLING_MODE  = THERMAL_THROTTLING
 
-Action integer mapping (Discrete(7)):
+Action integer mapping (Discrete(8)):
     0  NO_ACTION         — no intervention
     1  SUBSYSTEM_RESET   — partial reboot; restores CPU and comms
     2  MEMORY_SCRUB      — ECC scrub; repairs memory integrity, small CPU cost
@@ -20,6 +20,7 @@ Action integer mapping (Discrete(7)):
     4  POWER_CYCLE       — hard power cycle; resets voltage/current, battery cost
     5  THERMAL_THROTTLING — aggressive cooling + load shed; highest thermal relief
     6  ISOLATE_SUBSYSTEM — quarantine faulty subsystem; large recovery, load cut
+    7  DIAGNOSE          — passive diagnostic action (no direct state mutation)
 
 Step cycle position:
     1. FaultInjector.sample(state, t)       [Phase 2]
@@ -73,6 +74,7 @@ class ActionType(enum.IntEnum):
     POWER_CYCLE        = 4
     THERMAL_THROTTLING = 5
     ISOLATE_SUBSYSTEM  = 6
+    DIAGNOSE           = 7
 
     # -------- backward-compat aliases --------
     DO_NOTHING  = 0   # alias for NO_ACTION
@@ -275,6 +277,7 @@ class ActionProcessor:
             ActionType.POWER_CYCLE:        cls._power_cycle,
             ActionType.THERMAL_THROTTLING: cls._thermal_throttling,
             ActionType.ISOLATE_SUBSYSTEM:  cls._isolate_subsystem,
+            ActionType.DIAGNOSE:           cls._diagnose,
         }
         handler = dispatch.get(action)
         if handler is None:
@@ -465,9 +468,23 @@ class ActionProcessor:
     # Utility
     # ------------------------------------------------------------------
 
+    @classmethod
+    def _diagnose(cls, state: SubsystemState, step: int) -> Tuple[SubsystemState, ActionEffect]:
+        """Diagnostic probe action. No direct intervention on plant state."""
+        new_state = SubsystemState(
+            battery_level=        state.battery_level,
+            temperature=          state.temperature,
+            cpu_health=           state.cpu_health,
+            communication_health= state.communication_health,
+        )
+        effect = ActionEffect(
+            action_type=ActionType.DIAGNOSE, step=step,
+        )
+        return new_state, effect
+
     @staticmethod
     def action_space_size() -> int:
-        """Number of discrete actions (matches gym Discrete(7))."""
+        """Number of discrete actions (matches gym Discrete(8))."""
         # Count only canonical values (not aliases) — IntEnum dedups them
         return len(set(ActionType))
 
@@ -484,6 +501,7 @@ ACTION_COSTS = {
     int(ActionType.POWER_CYCLE):        0.8,
     int(ActionType.THERMAL_THROTTLING): 0.2,
     int(ActionType.ISOLATE_SUBSYSTEM):  1.0,
+    int(ActionType.DIAGNOSE):           0.1,
 }
 """
 Canonical action cost table — single source of truth.

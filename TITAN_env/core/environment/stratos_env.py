@@ -277,6 +277,7 @@ class TITANEnv:
             "fault_event":     fault_event,
             "fault_type":      fault_event.fault_type.name if fault_event else None,
             "fault_subsystem": fault_event.subsystem if fault_event else None,
+            "fault_severity_level": fault_event.severity_level if fault_event else 0,
             "action":          resolved_action.name,
             # Reward components (for RL debugging)
             "reward_survival":        1.0 if not done or not failed else 0.0,
@@ -395,12 +396,33 @@ class TITANEnv:
             "memory_fault_flag":  float(state.memory_fault_flag),
             "power_fault_flag":   float(state.power_fault_flag),
             "recent_fault_count": state.recent_fault_count,
+            # Per-fault severity levels (not part of the gym array)
+            "seu_severity":       0.0,
+            "latchup_severity":   0.0,
+            "thermal_severity":   0.0,
+            "memory_severity":    0.0,
+            "power_severity":     0.0,
+            "severity_level_total": 0.0,
             # Legacy Phase 1 aliases (backward compat — not in gym obs array)
             "battery_level":        state.battery_level,
             "temperature":          state.temperature,
             "cpu_health":           state.cpu_health,
             "communication_health": state.communication_health,
         }
+        if self._injector is not None:
+            active_severity = self._injector.active_fault_severity
+            obs["seu_severity"] = float(active_severity.get(FaultType.SEU, 0))
+            obs["latchup_severity"] = float(active_severity.get(FaultType.LATCH_UP, 0))
+            obs["thermal_severity"] = float(active_severity.get(FaultType.THERMAL_RUNAWAY, 0))
+            obs["memory_severity"] = float(active_severity.get(FaultType.MEMORY_CORRUPTION, 0))
+            obs["power_severity"] = float(active_severity.get(FaultType.POWER_FAULT, 0))
+            obs["severity_level_total"] = float(
+                obs["seu_severity"]
+                + obs["latchup_severity"]
+                + obs["thermal_severity"]
+                + obs["memory_severity"]
+                + obs["power_severity"]
+            )
 
         # Apply telemetry noise to physical channels only
         if self._injector is not None:

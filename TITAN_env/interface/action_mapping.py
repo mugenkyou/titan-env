@@ -10,6 +10,7 @@ COMMAND_TO_ACTION: Dict[str, int] = {
     "power_cycle": 4,
     "thermal_throttle": 5,
     "isolate": 6,
+    "diagnose": 7,
 }
 
 ACTION_TO_COMMAND: Dict[int, str] = {
