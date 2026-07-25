@@ -1,0 +1,83 @@
+name: TITAN-env
+description: Satellite fault recovery simulation environment
+version: 1.0.0
+entrypoint: TITAN_env.interface.openenv_wrapper:TITANEnv
+actions:
+  type: object
+  additionalProperties: false
+  required:
+    - command
+  properties:
+    command:
+      type: string
+      enum:
+        - no_action
+        - reset
+        - memory_scrub
+        - load_shedding
+        - power_cycle
+        - thermal_throttle
+        - isolate
+observations:
+  type: object
+  additionalProperties: false
+  required:
+    - voltage
+    - current_draw
+    - battery
+    - cpu_temp
+    - power_temp
+    - memory
+    - cpu_load
+    - signal
+    - recent_fault_count
+    - faults
+  properties:
+    voltage:
+      type: number
+      minimum: 0.0
+      maximum: 1.0
+    current_draw:
+      type: number
+      minimum: 0.0
+      maximum: 1.0
+    battery:
+      type: number
+      minimum: 0.0
+      maximum: 1.0
+    cpu_temp:
+      type: number
+      minimum: 0.0
+      maximum: 1.0
+    power_temp:
+      type: number
+      minimum: 0.0
+      maximum: 1.0
+    memory:
+      type: number
+      minimum: 0.0
+      maximum: 1.0
+    cpu_load:
+      type: number
+      minimum: 0.0
+      maximum: 1.0
+    signal:
+      type: number
+      minimum: 0.0
+      maximum: 1.0
+    recent_fault_count:
+      type: number
+      minimum: 0.0
+      maximum: 1.0
+    faults:
+      type: array
+      items:
+        type: string
+rewards:
+  type: object
+  additionalProperties: false
+  required:
+    - value
+  properties:
+    value:
+      type: number

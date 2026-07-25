@@ -1,0 +1,82 @@
+flowchart TB
+    subgraph Clients[Clients]
+        U1[Inference Runner]
+        U2[OpenEnv Validator]
+        U3[HTTP Clients]
+    end
+
+    subgraph Orchestration[Orchestration Layer]
+        O1[inference.py]
+        O2[Prompt Builder]
+        O3[LLM Call]
+        O4[Action Parser]
+    end
+
+    subgraph Serve[Serving Layer]
+        S1[stratos_env.server.app]
+        S2[GET /ping /health]
+        S3[GET /state]
+        S4[POST /reset]
+        S5[POST /step]
+    end
+
+    subgraph Interface[OpenEnv Interface Layer]
+        I1[openenv_wrapper.StratosEnv]
+        I2[models.py\nAction Observation Reward]
+        I3[action_mapping.py]
+        I4[llm_interface.py]
+    end
+
+    subgraph Eval[Task and Evaluation Layer]
+        T1[tasks.registry]
+        T2[task_easy task_medium task_hard]
+        T3[evaluation.trajectory]
+        T4[evaluation.scoring]
+        T5[graders easy medium hard]
+    end
+
+    subgraph Core[Simulation Core]
+        C1[core.environment.stratos_env]
+        C2[state_model.py]
+        C3[fault_injection.py]
+        C4[actions.py]
+        C5[reward_v2.py]
+    end
+
+    subgraph Deploy[Deployment and Validation]
+        D1[Dockerfile]
+        D2[scripts/validate-submission.sh]
+        D3[scripts/hardening_check.py]
+    end
+
+    U1 --> O1
+    O1 --> T1
+    T1 --> T2
+    O1 --> O2
+    O2 --> O3
+    O3 --> O4
+    O4 --> I4
+    O1 --> T3
+    T3 --> T4
+    T4 --> T5
+    O1 --> I1
+
+    U2 --> S1
+    U3 --> S1
+    S1 --> S2
+    S1 --> S3
+    S1 --> S4
+    S1 --> S5
+    S1 --> I1
+
+    I1 --> I2
+    I1 --> I3
+    I1 --> C1
+    C1 --> C2
+    C1 --> C3
+    C1 --> C4
+    C1 --> C5
+
+    D1 --> S1
+    D2 --> U2
+    D3 --> U1
