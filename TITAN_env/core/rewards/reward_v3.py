@@ -8,7 +8,7 @@ from titan_env.core.environment.actions import ActionType, ACTION_COSTS
 W1_UPTIME: float = 1.5
 W2_FAULT_SEVERITY: float = 1.0
 W3_ENERGY_USAGE: float = 0.1
-W4_RECOVERY_LATENCY: float = 2.0
+W4_RECOVERY_LATENCY: float = 2.0  # -2.0 per instructions
 W5_ACTION_COST: float = 0.05
 
 FAILURE_PENALTY: float = -30.0
@@ -74,45 +74,47 @@ def _compute_action_cost(action: Union[ActionType, int]) -> float:
 
 
 def _severity_penalty(obs: dict) -> float:
-    per_fault = (
-        ("seu_flag", "seu_severity"),
-        ("latchup_flag", "latchup_severity"),
-        ("thermal_fault_flag", "thermal_severity"),
-        ("memory_fault_flag", "memory_severity"),
-        ("power_fault_flag", "power_severity"),
-    )
+    # -0.5 * severity_level per active fault (use *_severity_level, default 1)
     total = 0.0
-    for flag_key, severity_key in per_fault:
-        if _is_fault_active(obs, flag_key):
-            severity = max(1.0, float(obs.get(severity_key, 1.0)))
-            total += 0.5 * severity
+    for key in [
+        "seu_severity_level",
+        "latchup_severity_level",
+        "thermal_severity_level",
+        "memory_severity_level",
+        "power_severity_level",
+    ]:
+        level = obs.get(key, 0)
+        if level:
+            total += -0.5 * float(level)
     return total
 
 
 def _contraindicated_penalty(obs: dict, action: ActionType) -> float:
+    # -0.8 if action is contraindicated
     if action == ActionType.POWER_CYCLE and not _is_fault_active(obs, "power_fault_flag"):
-        return 0.8
+        return -0.8
     if action == ActionType.MEMORY_SCRUB and not (
         _is_fault_active(obs, "memory_fault_flag") or _is_fault_active(obs, "seu_flag")
     ):
-        return 0.8
+        return -0.8
     if action == ActionType.THERMAL_THROTTLING and not _is_fault_active(obs, "thermal_fault_flag"):
-        return 0.8
-    if action == ActionType.ISOLATE_SUBSYSTEM and (
-        not _is_fault_active(obs, "seu_flag")
-        and not _is_fault_active(obs, "latchup_flag")
-        and not _is_fault_active(obs, "thermal_fault_flag")
-        and not _is_fault_active(obs, "memory_fault_flag")
-        and not _is_fault_active(obs, "power_fault_flag")
-    ):
-        return 0.8
+        return -0.8
+    if action == ActionType.SUBSYSTEM_RESET and not any([
+        _is_fault_active(obs, "seu_flag"),
+        _is_fault_active(obs, "latchup_flag"),
+        _is_fault_active(obs, "thermal_fault_flag"),
+        _is_fault_active(obs, "memory_fault_flag"),
+        _is_fault_active(obs, "power_fault_flag"),
+    ]):
+        return -0.8
     return 0.0
 
 
 def _diagnose_healthy_penalty(obs: dict, action: ActionType) -> float:
+    # -0.5 if DIAGNOSE used when system fully healthy (no active faults)
     healthy = _compute_uptime(obs) >= 1.0
     if action == ActionType.DIAGNOSE and healthy:
-        return 0.5
+        return -0.5
     return 0.0
 
 
@@ -141,9 +143,9 @@ def compute_reward(
         - W3_ENERGY_USAGE * energy
         - W4_RECOVERY_LATENCY * latency
         - W5_ACTION_COST * cost
-        - severity_level_penalty
-        - contraindicated_penalty
-        - diagnose_penalty
+        + severity_level_penalty
+        + contraindicated_penalty
+        + diagnose_penalty
         + failure_penalty
     )
 
@@ -153,8 +155,8 @@ def compute_reward(
         "reward_energy_usage": float(-W3_ENERGY_USAGE * energy),
         "reward_latency": float(-W4_RECOVERY_LATENCY * latency),
         "reward_action_cost": float(-W5_ACTION_COST * cost),
-        "reward_fault_severity_level": float(-severity_level_penalty),
-        "reward_contraindicated_action": float(-contraindicated_penalty),
-        "reward_diagnose_healthy": float(-diagnose_penalty),
+        "reward_severity_penalty": float(severity_level_penalty),
+        "reward_contraindicated": float(contraindicated_penalty),
+        "reward_diagnose_misuse": float(diagnose_penalty),
     }
     return float(total), components

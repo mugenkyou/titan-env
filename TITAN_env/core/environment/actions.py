@@ -310,6 +310,7 @@ class ActionProcessor:
         """
         Partial reboot: strong CPU recovery, brief comms penalty, battery spike.
         Best when CPU health is critically low.
+        Side-effect: if no fault is currently active → state.cpu_load += 0.12
         """
         c = _Coefficients
         cpu_load_side_effect = 0.12 if not cls._has_active_faults(state) else 0.0
@@ -339,6 +340,7 @@ class ActionProcessor:
         ECC memory scrub: repairs memory_integrity (via physics contract).
         Small battery cost; increases cpu_load briefly.
         Best after SEU events when memory integrity is degraded.
+        Side-effect: if thermal fault is active → state.power_temperature += 0.08
         """
         c = _Coefficients
         power_temp_side_effect = 0.08 if int(getattr(state, "thermal_fault_flag", 0)) else 0.0
@@ -348,7 +350,7 @@ class ActionProcessor:
             temperature=_clamp(state.temperature + c.MS_TEMP_DELTA),
             cpu_health=_clamp(state.cpu_health + c.MS_CPU_DELTA),
             communication_health=_clamp(state.communication_health + c.MS_COMMS_DELTA),
-            power_temperature=_clamp(state.power_temperature + power_temp_side_effect),
+            power_temperature=_clamp(getattr(state, "power_temperature", 0.0) + power_temp_side_effect),
         )
         effect = ActionEffect(
             action_type=ActionType.MEMORY_SCRUB, step=step,
@@ -395,6 +397,7 @@ class ActionProcessor:
         Hard power cycle: resets voltage and current_draw to nominal.
         High battery cost. Comms briefly disrupted.
         Best after latch-up accumulation or persistent over-current.
+        Side-effect: if no power fault is active → state.cpu_load += 0.15
         """
         c = _Coefficients
         cpu_load_side_effect = 0.15 if not int(getattr(state, "power_fault_flag", 0)) else 0.0
@@ -455,6 +458,7 @@ class ActionProcessor:
         - communication_health -= IS_COMMS_PENALTY (bus isolation → comms disruption).
         - Large recovery_effect counters latch-up current surges.
         - Small battery cost from isolation relay switching.
+        Side-effect: if fault severity < 2 → state.battery_soc -= 0.10
         """
         c = _Coefficients
         severity = cls._fault_severity(state)
@@ -465,7 +469,7 @@ class ActionProcessor:
             temperature=_clamp(state.temperature + c.IS_TEMP_DELTA),
             cpu_health=_clamp(state.cpu_health + c.IS_CPU_DELTA),
             communication_health=_clamp(state.communication_health + c.IS_COMMS_PENALTY),
-            battery_soc=_clamp(state.battery_soc + battery_soc_side_effect),
+            battery_soc=_clamp(getattr(state, "battery_soc", 0.0) + battery_soc_side_effect),
         )
         effect = ActionEffect(
             action_type=ActionType.ISOLATE_SUBSYSTEM, step=step,
@@ -482,12 +486,18 @@ class ActionProcessor:
 
     @classmethod
     def _diagnose(cls, state: SubsystemState, step: int) -> Tuple[SubsystemState, ActionEffect]:
-        """Diagnostic probe action. No direct intervention on plant state."""
+        """
+        Diagnostic probe action. No direct intervention on plant state.
+        Cost: 0.35 (deduct from reward via action_cost)
+        Effect: find the top active fault, add fault_hint to the info dict
+        If no fault active: add fault_hint: "none" to info dict
+        """
         new_state = cls._copy_state(state)
         diagnostic_fault, diagnostic_severity = cls._highest_severity_active_fault(state)
+        fault_hint = diagnostic_fault if diagnostic_fault is not None else "none"
         effect = ActionEffect(
             action_type=ActionType.DIAGNOSE, step=step,
-            diagnostic_fault=diagnostic_fault,
+            diagnostic_fault=fault_hint,
             diagnostic_severity=diagnostic_severity,
         )
         return new_state, effect

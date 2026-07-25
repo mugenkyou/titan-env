@@ -61,7 +61,7 @@ class FaultType(enum.Enum):
 TRAINING_HOLDOUT_FAULTS = frozenset(
     {
         FaultType.TELEMETRY_CORRUPTION,
-        FaultType.MEMORY_CORRUPTION,
+        FaultType.LATCH_UP,
         FaultType.POWER_FAULT,
     }
 )
@@ -278,14 +278,14 @@ class FaultInjector:
     def __init__(
         self,
         profile: RadiationProfile,
-        training_mode: bool = False,
+        training_mode: bool = True,
         holdout_faults: Optional[set[FaultType]] = None,
         severity_increment_prob: float = 0.15,
     ) -> None:
         self._profile = profile
         self._rng: np.random.Generator = self._make_rng()
         self._fault_log: List[FaultEvent] = []
-        self._training_mode = bool(training_mode)
+        self.training_mode = bool(training_mode)
         self._training_holdout_faults = (
             set(holdout_faults) if holdout_faults is not None else set(TRAINING_HOLDOUT_FAULTS)
         )
@@ -732,7 +732,7 @@ class FaultInjector:
         return state, event
 
     def _is_holdout_during_training(self, fault_type: FaultType) -> bool:
-        return self._training_mode and fault_type in self._training_holdout_faults
+        return self.training_mode and fault_type in self._training_holdout_faults
 
     def _update_active_fault_severity(
         self,

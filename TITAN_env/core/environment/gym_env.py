@@ -128,8 +128,10 @@ class TITANGymEnv(gym.Env):
 
         # Track last obs for trajectory logger support
         self._last_obs: np.ndarray = np.zeros(OBS_ARRAY_DIM, dtype=np.float32)
-        self._prev_voltage: float = 0.0
+        self._prev_battery_soc: float = 0.0
         self._prev_memory_integrity: float = 0.0
+        from collections import deque
+        self._memory_drift_window = deque(maxlen=5)
 
     # ------------------------------------------------------------------
     # Gymnasium API
@@ -158,8 +160,10 @@ class TITANGymEnv(gym.Env):
         super().reset(seed=seed)
 
         obs_dict = self._core.reset()
-        self._prev_voltage = float(obs_dict.get("voltage", 0.0))
+        self._prev_battery_soc = float(obs_dict.get("battery_soc", 0.0))
         self._prev_memory_integrity = float(obs_dict.get("memory_integrity", 0.0))
+        self._memory_drift_window.clear()
+        self._memory_drift_window.append(self._prev_memory_integrity)
         obs = self._obs_to_array(obs_dict, step=0)
         self._last_obs = obs
 
@@ -235,7 +239,7 @@ class TITANGymEnv(gym.Env):
     # ------------------------------------------------------------------
 
     def _obs_to_array(self, obs_dict: Dict[str, float], step: int) -> np.ndarray:
-        """Convert telemetry dict to the 11D policy observation vector."""
+        """Convert telemetry dict to the 11D policy observation vector (customized)."""
         voltage = float(obs_dict.get("voltage", 0.0))
         current_draw = float(obs_dict.get("current_draw", 0.0))
         battery_soc = float(obs_dict.get("battery_soc", 0.0))
@@ -244,30 +248,38 @@ class TITANGymEnv(gym.Env):
         memory_integrity = float(obs_dict.get("memory_integrity", 0.0))
         cpu_load = float(obs_dict.get("cpu_load", 0.0))
 
-        delta_voltage = abs(voltage - self._prev_voltage)
-        thermal_gradient = abs(cpu_temperature - power_temperature)
-        memory_drift = abs(memory_integrity - self._prev_memory_integrity)
+        # Derived features
+        delta_voltage = battery_soc - self._prev_battery_soc
+        thermal_gradient = cpu_temperature - power_temperature
+        self._memory_drift_window.append(memory_integrity)
+        if len(self._memory_drift_window) >= 2:
+            memory_drift = float(np.std(self._memory_drift_window))
+        else:
+            memory_drift = 0.0
         step_fraction = float(step) / float(max(self._max_steps, 1))
 
         arr = np.array(
             [
-                voltage,
-                current_draw,
-                battery_soc,
-                cpu_temperature,
-                power_temperature,
-                memory_integrity,
-                cpu_load,
-                delta_voltage,
-                thermal_gradient,
-                memory_drift,
-                step_fraction,
+                voltage,           # 0
+                current_draw,      # 1
+                battery_soc,       # 2
+                cpu_temperature,   # 3
+                power_temperature, # 4
+                memory_integrity,  # 5
+                cpu_load,          # 6
+                delta_voltage,     # 7
+                thermal_gradient,  # 8
+                memory_drift,      # 9
+                step_fraction,     # 10
             ],
             dtype=np.float32,
         )
-        arr = self._add_observation_noise(arr)
+        # Gaussian noise: sigma = 0.01 + 0.03 * radiation_intensity
+        sigma = 0.01 + 0.03 * self._radiation_intensity
+        arr = arr + self._obs_rng.normal(0.0, sigma, arr.shape).astype(np.float32)
+        arr = np.clip(arr, 0.0, 1.0).astype(np.float32)
 
-        self._prev_voltage = voltage
+        self._prev_battery_soc = battery_soc
         self._prev_memory_integrity = memory_integrity
         return arr
 
