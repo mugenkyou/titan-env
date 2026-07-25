@@ -69,7 +69,7 @@ def run_noop_task(task_alias: str, seed: int) -> Tuple[float, List[float]]:
     wrapper = OpenEnvWrapper(core_env=core_env)
     
     task.reset(wrapper.core_env, seed)
-    observation = wrapper.state()
+    observation = wrapper.state
     
     trajectory = EvaluationTrajectory()
     trajectory.start(_normalize_dict(observation))

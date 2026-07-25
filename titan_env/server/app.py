@@ -53,7 +53,7 @@ class _RequestHandler(BaseHTTPRequestHandler):
         if self.path == "/state":
             with _APP_LOCK:
                 env = _get_env()
-                payload = _model_dump(env.state())
+                payload = _model_dump(env.state)
             _send_json(self, HTTPStatus.OK, payload)
             return
         _send_json(self, HTTPStatus.NOT_FOUND, {"error": "not_found"})

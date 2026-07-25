@@ -170,7 +170,7 @@ def _run_task(task_alias: str, model: Callable[[str], str], seed: int, model_nam
     wrapper = OpenEnvWrapper(core_env=core_env)
 
     task.reset(wrapper.core_env, seed)
-    observation = wrapper.state()
+    observation = wrapper.state
 
     trajectory = EvaluationTrajectory()
     trajectory.start(_normalize_dict(observation))

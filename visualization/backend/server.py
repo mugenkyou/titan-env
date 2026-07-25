@@ -48,14 +48,14 @@ try:
 except Exception:  # noqa: BLE001
     FastLanguageModel = None  # type: ignore
 
-from TITAN_env.core.environment.actions import ActionType
-from TITAN_env.core.environment.fault_injection import (
+from titan_env.core.environment.actions import ActionType
+from titan_env.core.environment.fault_injection import (
     INTENSITY_PROFILES,
     FaultInjector,
     RadiationProfile,
 )
-from TITAN_env.core.environment.gym_env import TITANGymEnv
-from TITAN_env.interface.action_mapping import COMMAND_TO_ACTION
+from titan_env.core.environment.gym_env import TITANGymEnv
+from titan_env.interface.action_mapping import COMMAND_TO_ACTION
 from agent.diagnostic_agent import DiagnosticAgent
 from agent.memory import Memory
 from agent.recovery_agent import RecoveryAgent

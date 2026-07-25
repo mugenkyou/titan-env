@@ -16,7 +16,7 @@ from agent.diagnostic_agent import DiagnosticAgent
 from agent.recovery_agent import RecoveryAgent
 from agent.memory import Memory
 from agent.run_episode import run_episode
-from TITAN_env.interface.action_mapping import COMMAND_TO_ACTION
+from titan_env.interface.action_mapping import COMMAND_TO_ACTION
 
 print("=" * 80)
 print("TITAN Multi-Agent Fault Recovery System - Usage Example")
@@ -335,8 +335,8 @@ from agent.diagnostic_agent import DiagnosticAgent
 from agent.recovery_agent import RecoveryAgent
 from agent.memory import Memory
 from agent.run_episode import run_episode
-from TITAN_env.core.environment.gym_env import TITANGymEnv
-from TITAN_env.core.environment.fault_injection import FaultInjector, INTENSITY_PROFILES
+from titan_env.core.environment.gym_env import TITANGymEnv
+from titan_env.core.environment.fault_injection import FaultInjector, INTENSITY_PROFILES
 
 # Load model
 model, tokenizer = FastLanguageModel.from_pretrained(

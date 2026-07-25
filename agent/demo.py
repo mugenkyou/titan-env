@@ -24,11 +24,11 @@ except NameError:
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from TITAN_env.core.environment.fault_injection import (
+from titan_env.core.environment.fault_injection import (
     INTENSITY_PROFILES,
     FaultInjector,
 )
-from TITAN_env.core.environment.gym_env import TITANGymEnv
+from titan_env.core.environment.gym_env import TITANGymEnv
 from agent.diagnostic_agent import DiagnosticAgent
 from agent.memory import Memory
 from agent.recovery_agent import RecoveryAgent

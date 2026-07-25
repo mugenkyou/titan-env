@@ -12,7 +12,7 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from TITAN_env.interface.action_mapping import COMMAND_TO_ACTION
+from titan_env.interface.action_mapping import COMMAND_TO_ACTION
 
 
 def run_episode(
