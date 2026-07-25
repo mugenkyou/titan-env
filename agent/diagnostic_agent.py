@@ -85,7 +85,7 @@ Current Telemetry:
 Recent History (last 5 steps):
 {memory_str}
 
-Think carefully before answering. Output EXACTLY in this format:
+Output EXACTLY in this format with no extra text before or after:
 FAULT: [thermal/memory/power/latchup/none]
 SEVERITY: [1/2/3]
 CONFIDENCE: [low/medium/high]
@@ -100,7 +100,7 @@ REASONING: [one sentence]
         with torch.no_grad():
             outputs = self.model.generate(
                 **inputs,
-                max_new_tokens=150,
+                max_new_tokens=256,
                 temperature=0.7,
                 do_sample=True,
             )
@@ -126,24 +126,32 @@ REASONING: [one sentence]
         think_match = re.search(r"<think>(.*?)</think>", raw_output, re.DOTALL)
         if think_match:
             result["think_trace"] = think_match.group(1).strip()
+            # Search structured fields ONLY in text after </think>, since
+            # Qwen3 may draft FAULT:/SEVERITY: inside the think block
+            # before emitting the real answer.
+            search_text = raw_output[think_match.end():]
+            if not search_text.strip():
+                search_text = raw_output
+        else:
+            search_text = raw_output
 
-        fault_match = re.search(r"FAULT:\s*(\w+)", raw_output, re.IGNORECASE)
+        fault_match = re.search(r"FAULT:\s*(\w+)", search_text, re.IGNORECASE)
         if fault_match:
             fault_candidate = fault_match.group(1).lower()
             if fault_candidate in ["thermal", "memory", "power", "latchup", "none"]:
                 result["fault"] = fault_candidate
 
-        severity_match = re.search(r"SEVERITY:\s*([123])", raw_output, re.IGNORECASE)
+        severity_match = re.search(r"SEVERITY:\s*([123])", search_text, re.IGNORECASE)
         if severity_match:
             result["severity"] = int(severity_match.group(1))
 
-        confidence_match = re.search(r"CONFIDENCE:\s*(\w+)", raw_output, re.IGNORECASE)
+        confidence_match = re.search(r"CONFIDENCE:\s*(\w+)", search_text, re.IGNORECASE)
         if confidence_match:
             conf_candidate = confidence_match.group(1).lower()
             if conf_candidate in ["low", "medium", "high"]:
                 result["confidence"] = conf_candidate
 
-        reasoning_match = re.search(r"REASONING:\s*(.+?)(?:\n|$)", raw_output, re.IGNORECASE)
+        reasoning_match = re.search(r"REASONING:\s*(.+?)(?:\n|$)", search_text, re.IGNORECASE)
         if reasoning_match:
             result["reasoning"] = reasoning_match.group(1).strip()
 
