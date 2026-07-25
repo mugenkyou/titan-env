@@ -35,7 +35,7 @@ from __future__ import annotations
 
 from typing import Dict, Tuple, Union
 
-from TITAN_env.core.environment.actions import ActionType, ACTION_COSTS
+from titan_env.core.environment.actions import ActionType, ACTION_COSTS
 
 
 # ---------------------------------------------------------------------------

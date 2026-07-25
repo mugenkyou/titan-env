@@ -18,6 +18,7 @@ actions:
         - power_cycle
         - thermal_throttle
         - isolate
+        - diagnose
 observations:
   type: object
   additionalProperties: false

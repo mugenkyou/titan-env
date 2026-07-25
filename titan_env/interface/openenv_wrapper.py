@@ -1,29 +1,86 @@
+"""OpenEnv-compatible wrapper around the TITAN core simulator.
+
+This module exposes :class:`TITANEnv`, a subclass of ``openenv.core.Environment``
+that satisfies the OpenEnv contract used by the Meta PyTorch OpenEnv Hackathon
+scorer:
+
+* inherits from ``openenv.core.Environment``
+* implements ``reset(seed=None, episode_id=None, **kwargs)``
+* implements ``step(action, timeout_s=None, **kwargs)``
+* exposes ``state`` as a ``@property`` (not a method)
+
+The runtime behaviour is unchanged from the previous wrapper: the wrapper still
+returns the gym-style ``(observation, reward, done, info)`` tuple from
+``step`` for the existing TITAN HTTP server (``titan_env.server.app``) and the
+in-process call-sites under ``agent/`` and ``visualization/``.
+"""
+
 from __future__ import annotations
 
 import math
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
-from TITAN_env.core.environment.TITAN_env import TITANEnv as CoreTITANEnv
-from TITAN_env.core.rewards.reward_v2 import compute_reward as compute_reward_v2
+try:
+    from openenv.core import Environment as _OpenEnvBase
+except Exception:  # noqa: BLE001 - openenv-core may be absent in minimal envs
+    try:
+        from openenv_core import Environment as _OpenEnvBase  # type: ignore
+    except Exception:  # noqa: BLE001
+        class _OpenEnvBase:  # minimal shim so the module still imports
+            """Fallback base used when openenv-core is unavailable.
 
-from TITAN_env.interface.action_mapping import discrete_from_command
-from TITAN_env.interface.models import Action, Observation, Reward
+            The hackathon validator runs in an environment where
+            ``openenv-core`` is installed, so the real base class is used
+            in production. This shim only exists so local development on a
+            machine without ``openenv-core`` does not break imports.
+            """
+
+            def __init__(self, *args: Any, **kwargs: Any) -> None:
+                pass
+
+from titan_env.core.environment.TITAN_env import TITANEnv as CoreTITANEnv
+from titan_env.core.rewards.reward_v2 import compute_reward as compute_reward_v2
+
+from titan_env.interface.action_mapping import discrete_from_command
+from titan_env.interface.models import Action, Observation, Reward
 
 
-class TITANEnv:
+class TITANEnv(_OpenEnvBase):
     """OpenEnv-compatible wrapper around the existing TITAN core environment."""
 
+    SUPPORTS_CONCURRENT_SESSIONS: bool = False
+
     def __init__(self, core_env: Optional[CoreTITANEnv] = None) -> None:
+        try:
+            super().__init__()
+        except TypeError:
+            pass
         self.core_env = core_env if core_env is not None else CoreTITANEnv()
         self._last_observation: Optional[Observation] = None
 
-    def reset(self) -> Observation:
+    def reset(
+        self,
+        seed: Optional[int] = None,
+        episode_id: Optional[str] = None,
+        **kwargs: Any,
+    ) -> Observation:
+        if seed is not None and hasattr(self.core_env, "seed"):
+            try:
+                self.core_env.seed(seed)
+            except Exception:  # noqa: BLE001 - seeding is best-effort
+                pass
+
         raw_obs = self.core_env.reset()
         structured = self._observation_from_dict(raw_obs)
         self._last_observation = structured
         return structured
 
-    def step(self, action: Action) -> Tuple[Observation, Reward, bool, Dict]:
+    def step(
+        self,
+        action: Action,
+        timeout_s: Optional[float] = None,
+        **kwargs: Any,
+    ) -> Tuple[Observation, Reward, bool, Dict]:
         command = (action.command or "").strip().lower()
         discrete_action = discrete_from_command(command)
         raw_obs, done, info = self.core_env.step(discrete_action)
@@ -39,19 +96,25 @@ class TITANEnv:
         self._last_observation = structured_obs
         return structured_obs, structured_reward, bool(done), safe_info
 
+    @property
     def state(self) -> Observation:
+        """Return the most recent normalized observation as the env state.
+
+        Required by ``openenv.core.Environment``. Computed lazily from the
+        underlying core simulator if no observation has been emitted yet.
+        """
         if self._last_observation is not None:
             return self._last_observation
 
-        state = self.core_env.state
+        core_state = self.core_env.state
         raw_obs = {
-            "voltage": state.voltage,
-            "current_draw": state.current_draw,
-            "battery_soc": state.battery_soc,
-            "cpu_temperature": state.cpu_temperature,
-            "power_temperature": state.power_temperature,
-            "memory_integrity": state.memory_integrity,
-            "cpu_load": state.cpu_load,
+            "voltage": core_state.voltage,
+            "current_draw": core_state.current_draw,
+            "battery_soc": core_state.battery_soc,
+            "cpu_temperature": core_state.cpu_temperature,
+            "power_temperature": core_state.power_temperature,
+            "memory_integrity": core_state.memory_integrity,
+            "cpu_load": core_state.cpu_load,
         }
         structured = self._observation_from_dict(raw_obs)
         self._last_observation = structured
@@ -112,5 +175,3 @@ class TITANEnv:
             return {"diagnose_fault": None, "diagnose_severity": 0.0}
         fault_name, severity = max(active, key=lambda item: item[1])
         return {"diagnose_fault": fault_name, "diagnose_severity": float(severity)}
-
-

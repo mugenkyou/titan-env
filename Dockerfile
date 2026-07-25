@@ -7,7 +7,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 COPY pyproject.toml README.md /app/
-COPY TITAN_env /app/titan_env
+COPY titan_env /app/titan_env
 COPY server /app/server
 COPY inference.py /app/inference.py
 COPY openenv.yaml /app/openenv.yaml
