@@ -17,7 +17,7 @@
 #     ./validate-submission.sh <ping_url> [repo_dir]
 #
 # Arguments:
-#   ping_url   Your HuggingFace Space URL (e.g. https://your-space.hf.space)
+#   ping_url   Your HuggingFace Space URL (e.g. https://huggingface.co/spaces/mugenkyou/titan-env)
 #   repo_dir   Path to your repo (default: current directory)
 #
 # Examples:
@@ -72,7 +72,7 @@ REPO_DIR="${2:-.}"
 if [ -z "$PING_URL" ]; then
   printf "Usage: %s <ping_url> [repo_dir]\n" "$0"
   printf "\n"
-  printf "  ping_url   Your HuggingFace Space URL (e.g. https://your-space.hf.space)\n"
+  printf "  ping_url   Your HuggingFace Space URL (e.g. https://huggingface.co/spaces/mugenkyou/titan-env)\n"
   printf "  repo_dir   Path to your repo (default: current directory)\n"
   exit 1
 fi

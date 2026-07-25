@@ -31,10 +31,20 @@ python inference.py
 ## Tasks
 
 - **easy_single_fault_recovery** — Recover onboard memory after radiation-induced corruption before critical data loss. Goal: memory_integrity > 0.9 within 30 steps.
-- **medium_thermal_stabilization** — Stabilize CPU and power subsystem temperatures following a thermal fault cascade. Goal: cpu_temp and power_temp within safe thresholds within 40 steps.
-- **hard_multi_fault_survival** — Survive a compounding multi-fault scenario spanning memory, thermal, and latch-up anomalies. Goal: keep the system operational for 50 steps without full failure.
+- **medium_thermal_stabilization** — Stabilize CPU and power subsystem temperatures following a thermal fault cascade. Goal: reduce cpu_temperature below 0.70 within 50 steps while keeping average current draw under 0.55.
+- **hard_multi_fault_survival** — Survive a compounding multi-fault scenario spanning memory, thermal, and power anomalies. Goal: survive 100 steps without full failure while keeping battery_soc at or above 0.20.
 
 Each task has a corresponding grader that returns a score in `[0.0, 1.0]`.
+
+### Baseline Scores
+
+Scores below were generated with the built-in no-op fallback policy and seed `42`:
+
+| Task     |   Score | Steps |
+| -------- | ------: | ----: |
+| `easy`   | `1.000` |  `30` |
+| `medium` | `0.996` |  `50` |
+| `hard`   | `0.660` | `120` |
 
 ---
 
@@ -132,15 +142,18 @@ openenv validate
 The inference engine supports multiple ways to provide API credentials (tried in order):
 
 1. **local.env file** (recommended for development):
+
    ```bash
    # Create local.env in the project root
    echo "HF_TOKEN=your-token-here" >> local.env
    # or
    echo "OPENAI_API_KEY=sk-..." >> local.env
    ```
+
    The file is automatically loaded at runtime and is git-ignored.
 
 2. **Environment variables** (recommended for CI/production):
+
    ```bash
    export HF_TOKEN="your-token"
    export OPENAI_API_KEY="sk-..."
@@ -151,6 +164,8 @@ The inference engine supports multiple ways to provide API credentials (tried in
    export API_BASE_URL="https://api.openai.com/v1"
    export MODEL_NAME="gpt-4o-mini"
    ```
+
+The inference script reads `API_BASE_URL`, `MODEL_NAME`, and `HF_TOKEN` first, then falls back to `OPENAI_API_KEY` if `HF_TOKEN` is not set.
 
 ### With LLM Agent (OpenAI)
 
@@ -204,10 +219,11 @@ docker run -p 7860:7860 -e PORT=7860 titan-env
 
 ### HuggingFace Spaces
 
-1. Create a new Space at https://huggingface.co/spaces
-2. Select "Docker" runtime
-3. Push this repository (includes `Dockerfile` and `openenv.yaml`)
-4. HuggingFace will auto-build and deploy
+1. Live Space: https://huggingface.co/spaces/mugenkyou/titan-env
+2. Create a new Space at https://huggingface.co/spaces if you need to redeploy or fork it
+3. Select "Docker" runtime
+4. Push this repository (includes `Dockerfile` and `openenv.yaml`)
+5. HuggingFace will auto-build and deploy
 
 ### HTTP Endpoints
 
@@ -242,7 +258,7 @@ Use the provided validation script to check your submission before upload:
 
 ```bash
 # On Linux/macOS
-bash scripts/validate-submission.sh https://your-space.hf.space
+bash scripts/validate-submission.sh https://huggingface.co/spaces/mugenkyou/titan-env
 
 # On Windows (PowerShell)
 cd scripts
@@ -298,4 +314,3 @@ This script checks:
 - System architecture: [docs/system-architecture.md](./docs/system-architecture.md)
 - Component diagram: [docs/component-diagram.mmd](./docs/component-diagram.mmd)
 ```
-
