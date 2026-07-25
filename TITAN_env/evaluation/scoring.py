@@ -29,7 +29,9 @@ def score_trajectory(task_name: str, trajectory: Any) -> float:
         score = float(score_value)
         if math.isnan(score):
             score = EPS
-    return float(max(EPS, min(1.0 - EPS, score)))
+    score = float(max(EPS, min(1.0 - EPS, score)))
+    assert 0.0 < score < 1.0, f"Invalid score: {score}"
+    return score
 
 
 __all__ = ["score_trajectory"]

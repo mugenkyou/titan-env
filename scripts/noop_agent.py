@@ -15,6 +15,7 @@ import argparse
 import sys
 from typing import Any, Dict, List, Tuple
 
+from titan_env.evaluation.scoring import score_trajectory
 from titan_env.evaluation.trajectory import EvaluationTrajectory
 from titan_env.interface.models import Action, Observation
 from titan_env.interface.openenv_wrapper import TITANEnv as OpenEnvWrapper
@@ -34,11 +35,6 @@ def _normalize_dict(model: Any) -> Dict[str, Any]:
     return dict(model)
 
 
-def _clamp01(value: float) -> float:
-    """Clamp a value to [0.0, 1.0]."""
-    return float(max(0.0, min(1.0, value)))
-
-
 def _format_error(error: Exception | str | None) -> str:
     """Format an error for logging."""
     if error is None:
@@ -49,8 +45,7 @@ def _format_error(error: Exception | str | None) -> str:
 
 def _score_trajectory(task_name: str, trajectory: EvaluationTrajectory) -> float:
     """Score a trajectory using the task's grader."""
-    bundle = resolve_task_bundle(task_name)
-    return _clamp01(float(bundle.grader(trajectory.to_grader_records())))
+    return score_trajectory(task_name, trajectory)
 
 
 def run_noop_task(task_alias: str, seed: int) -> Tuple[float, List[float]]:

@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import argparse
-import math
 import os
 from typing import Any, Callable, Dict, Tuple
 
+from titan_env.evaluation.scoring import score_trajectory
 from titan_env.evaluation.trajectory import EvaluationTrajectory
 from titan_env.interface.llm_interface import parse_action, render_observation
 from titan_env.interface.models import Action, Observation
@@ -13,7 +13,6 @@ from titan_env.tasks.registry import available_task_names, resolve_task_bundle
 
 
 ENV_NAME = "titan_env.interface.openenv_wrapper.TITANEnv"
-EPS = 1e-6
 
 
 def _load_local_env_file(filename: str = "local.env") -> None:
@@ -44,10 +43,6 @@ def _normalize_dict(model: Any) -> Dict[str, Any]:
     if hasattr(model, "dict"):
         return dict(model.dict())
     return dict(model)
-
-
-def _clamp01(value: float) -> float:
-    return float(max(EPS, min(1.0 - EPS, value)))
 
 
 def _format_error(error: Exception | str | None) -> str:
@@ -136,14 +131,7 @@ def _interpret_score(score: float, task_alias: str) -> str:
 
 
 def _score_trajectory(task_name: str, trajectory: EvaluationTrajectory) -> float:
-    bundle = resolve_task_bundle(task_name)
-    score_value = bundle.grader(trajectory.to_grader_records())
-    if score_value is None:
-        return float(EPS)
-    score = float(score_value)
-    if math.isnan(score):
-        return float(EPS)
-    return _clamp01(score)
+    return score_trajectory(task_name, trajectory)
 
 
 def _run_task(task_alias: str, model: Callable[[str], str], seed: int, model_name: str) -> Tuple[float, EvaluationTrajectory]:
