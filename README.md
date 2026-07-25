@@ -8,7 +8,7 @@
 
 - Simulates satellite subsystem faults (SEU, thermal, latch-up, memory corruption)
 - Provides an LLM-friendly interface for autonomous recovery decisions
-- Scores agent performance on realistic fault scenarios (0.0–1.0)
+- Scores agent performance on realistic fault scenarios (strictly between 0 and 1)
 
 ## Why It Matters
 
@@ -34,17 +34,17 @@ python inference.py
 - **medium_thermal_stabilization** — Stabilize CPU and power subsystem temperatures following a thermal fault cascade. Goal: reduce cpu_temperature below 0.70 within 50 steps while keeping average current draw under 0.55.
 - **hard_multi_fault_survival** — Survive a compounding multi-fault scenario spanning memory, thermal, and power anomalies. Goal: survive 100 steps without full failure while keeping battery_soc at or above 0.20.
 
-Each task has a corresponding grader that returns a score in `[0.0, 1.0]`.
+Each task has a corresponding grader; final reported scores are clamped to `(0, 1)`.
 
 ### Baseline Scores
 
 Scores below were generated with the built-in no-op fallback policy and seed `42`:
 
-| Task     |   Score | Steps |
-| -------- | ------: | ----: |
-| `easy`   | `1.000` |  `30` |
-| `medium` | `0.996` |  `50` |
-| `hard`   | `0.660` | `120` |
+| Task     |      Score | Steps |
+| -------- | ---------: | ----: |
+| `easy`   | `0.999999` |  `30` |
+| `medium` | `0.996000` |  `50` |
+| `hard`   | `0.660295` | `120` |
 
 ---
 
