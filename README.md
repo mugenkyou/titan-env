@@ -33,14 +33,49 @@ python inference.py
 ### Curriculum RL Training (Colab / GPU)
 
 ```bash
-pip install sb3-contrib
-python training/train_ppo.py \
-  --algo recurrent_ppo \
-  --curriculum-profiles low medium high \
-  --phase-timesteps 200000 \
-  --reward-version v3 \
-  --seed 42 \
-  --save-path models/lstm_ppo_v3_curriculum_seed42
+
+# TITAN — Satellite Fault Recovery Benchmark
+
+> "A benchmark that forces agents to diagnose before they act — 
+> because in space, guessing costs everything."
+
+## The Problem
+Real satellites face radiation faults during communication blackouts.
+They must recover autonomously — but they can't see what's broken.
+Only symptoms: voltage drops, temperature spikes, memory drift.
+Like a doctor who can only see fever and heart rate, never the diagnosis.
+
+## What TITAN Does
+- **Symptom-only observations** — no fault flags exposed
+- **DIAGNOSE action** — agent pays a cost to gather evidence
+- **Action side-effects** — wrong actions cause real damage
+- **Fault severity escalation** — early action strictly better than late
+- **Held-out fault generalization** — 3 fault types never seen in training
+
+## Training
+Fine-tuned Qwen2.5-1.5B on TITAN env via GRPO (Unsloth + TRL).
+
+![Reward Curve](docs/reward_curve_grpo.png)
+
+## Results
+| Policy | Mean Survival | Notes |
+|---|---|---|
+| no_action | ~12 steps | baseline |
+| random | ~18 steps | baseline |
+| heuristic | ~31 steps | fails without fault flags |
+| Qwen2.5 GRPO | TBD | trained agent |
+
+## Links
+- 🤗 HF Space: https://huggingface.co/spaces/mugenkyou/titan-env
+- 📝 Blog: [link]
+- 📓 Training Notebook: [kaggle link]
+
+## Quick Start
+```bash
+pip install -e .
+openenv validate
+python inference.py
+```
 ```
 
 ## Tasks

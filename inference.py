@@ -4,6 +4,26 @@ import argparse
 import os
 from typing import Any, Callable, Dict, Tuple
 
+# Optional: Unsloth local model support
+def _build_unsloth_model(model_path: str, max_seq_length: int = 512, load_in_4bit: bool = True):
+    try:
+        from unsloth import FastLanguageModel
+    except ImportError as exc:
+        raise RuntimeError("The unsloth package is required for local model inference.") from exc
+    model, tokenizer = FastLanguageModel.from_pretrained(
+        model_name=model_path,
+        max_seq_length=max_seq_length,
+        load_in_4bit=load_in_4bit,
+    )
+    FastLanguageModel.for_inference(model)
+
+    def _model(prompt: str) -> str:
+        inputs = tokenizer(prompt, return_tensors="pt")
+        outputs = model.generate(**inputs, max_new_tokens=16)
+        text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        return text
+    return _model
+
 try:
     from titan_env.evaluation.scoring import score_trajectory
 except ImportError:
@@ -215,25 +235,33 @@ def _run_task(task_alias: str, model: Callable[[str], str], seed: int, model_nam
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run TITAN inference across all registered tasks.")
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--model-type", type=str, default=None, help="Type of model: openai or unsloth (local)")
+    parser.add_argument("--local-model-path", type=str, default="models/grpo_titan_final", help="Path to local Unsloth model")
     args = parser.parse_args()
 
     if os.getenv("TITAN_DISABLE_LOCAL_ENV", "").lower() not in {"1", "true", "yes"}:
         _load_local_env_file()
 
-    api_base_url = os.getenv("API_BASE_URL") or "https://api.openai.com/v1"
-    model_name = os.getenv("MODEL_NAME") or "gpt-4o-mini"
-    hf_token = os.getenv("HF_TOKEN") or os.getenv("API_KEY") or os.getenv("OPENAI_API_KEY")
 
-    if hf_token:
-        model = _build_openai_model(api_base_url, model_name, hf_token, args.seed)
-        active_model_name = model_name
+    # Model selection logic
+    model_type = args.model_type or os.getenv("MODEL_TYPE", "openai").lower()
+    if model_type == "unsloth":
+        local_model_path = args.local_model_path or os.getenv("LOCAL_MODEL_PATH", "models/grpo_titan_final")
+        model = _build_unsloth_model(local_model_path)
+        active_model_name = f"unsloth:{local_model_path}"
     else:
-        # Keep inference executable in environments without credentials.
-        model = _fallback_model
-        active_model_name = "fallback-noop"
-        import sys
-
-        print("[INFO] HF_TOKEN/API_KEY not set. Using fallback-noop policy.", file=sys.stderr)
+        api_base_url = os.getenv("API_BASE_URL") or "https://api.openai.com/v1"
+        model_name = os.getenv("MODEL_NAME") or "gpt-4o-mini"
+        hf_token = os.getenv("HF_TOKEN") or os.getenv("API_KEY") or os.getenv("OPENAI_API_KEY")
+        if hf_token:
+            model = _build_openai_model(api_base_url, model_name, hf_token, args.seed)
+            active_model_name = model_name
+        else:
+            # Keep inference executable in environments without credentials.
+            model = _fallback_model
+            active_model_name = "fallback-noop"
+            import sys
+            print("[INFO] HF_TOKEN/API_KEY not set. Using fallback-noop policy.", file=sys.stderr)
 
     task_scores: Dict[str, float] = {}
     for task_alias in available_task_names():
