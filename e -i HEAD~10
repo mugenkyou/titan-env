@@ -1,0 +1,216 @@
+[33mcommit 4136a48897ff0651b444038adb72a507fcd05ace[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: mugenkyou <sachinskyte@gmail.com>
+Date:   Sun Apr 26 14:36:08 2026 +0530
+
+    final
+
+[33mcommit 8b41a079871688d07066bd7da93dafa157b24b93[m
+Author: mugenkyou <sachinskyte@gmail.com>
+Date:   Sun Apr 26 14:34:09 2026 +0530
+
+    project complete
+
+[33mcommit 595fa26a7552b099b9f49a9b899d0db2f8329853[m
+Author: mugenkyou <sachinskyte@gmail.com>
+Date:   Sun Apr 26 11:10:12 2026 +0530
+
+    raedme
+
+[33mcommit 9144075818e98d939807d1dd510a2020f361b4ed[m
+Author: JAY6969-SMILE <1mj23ae027@mvjce.edu.in>
+Date:   Sun Apr 26 08:21:23 2026 +0530
+
+    notebooks: add GRPO Qwen3-1.7B training notebook from Kaggle
+    
+    Hackathon submission validator item 4 — the notebook is now committed
+    inside the repo so judges can read and re-run the training code without
+    leaving the repo.
+    
+    - Pull jayasimhareddy777/notebook64b334a6c9 from Kaggle and store as
+      notebooks/grpo_qwen3_training.ipynb (19 cells: Unsloth +
+      FastLanguageModel for the base model, TRL GRPOTrainer/GRPOConfig with a
+      custom reward_func, full trainer.train() loop, and Qwen3 -> grpo_qwen3
+      adapter export).
+    - Update README.md to link to the local notebook in addition to the
+      public Kaggle URL so the submission has both an on-repo artefact and a
+      live training history.
+    
+    Made-with: Cursor:
+
+[33mcommit 48bdc6165088a5a13fe300170b62845912396ad8[m
+Merge: ba65f33 1447967
+Author: mugenkyou <sachinskyte@gmail.com>
+Date:   Sun Apr 26 08:15:22 2026 +0530
+
+    Merge branch 'main' of https://github.com/mugenkyou/worksonmymachine
+
+[33mcommit 1447967b4afa3ffb23a627f2e41083c7c266257f[m
+Author: JAY6969-SMILE <1mj23ae027@mvjce.edu.in>
+Date:   Sun Apr 26 08:14:49 2026 +0530
+
+    openenv: inherit Environment, state @property, lowercase titan_env package
+    
+    Hackathon submission validator items 2 + casing.
+    
+    - titan_env/interface/openenv_wrapper.py: TITANEnv now subclasses
+      openenv.core.Environment[Action, Observation, Observation], satisfies the
+      abstract reset(seed=None, episode_id=None, **kwargs) /
+      step(action, timeout_s=None, **kwargs) signatures, and exposes `state` as a
+      true @property (instead of a method) so the OpenEnv contract validates.
+    - Update the four call-sites that used wrapper.state() to attribute access:
+      inference.py, scripts/noop_agent.py, scripts/random_agent.py, and
+      titan_env/server/app.py.
+    - Rename the package directory TITAN_env/ -> titan_env/ so the manifest
+      entrypoint `titan_env.interface.openenv_wrapper:TITANEnv` resolves on
+      case-sensitive filesystems (Linux / HF Space build). All affected modules
+      (titan_env subpackages, agent/, scripts/, server/, visualization/,
+      inference.py, USAGE_EXAMPLE.py) are switched from `from TITAN_env...` to
+      `from titan_env...`.
+    - Update Dockerfile to COPY titan_env (was COPY TITAN_env), matching the
+      new directory casing.
+    - Add the missing `diagnose` action to openenv.yaml so the action enum
+      matches the wrapper's documented behaviour.
+    
+    Verified locally: TITANEnv() instantiates, isinstance(e, Environment) is True,
+    type(e).__dict__['state'] is a property, reset()/step()/state all return the
+    expected Observation type.
+    
+    Made-with: Cursor:
+
+[33mcommit ba65f331d61bb8125131656c6a4001925695978a[m
+Merge: 7a72524 2d88b3d
+Author: mugenkyou <sachinskyte@gmail.com>
+Date:   Sun Apr 26 08:13:54 2026 +0530
+
+    Merge branch 'main' of https://github.com/mugenkyou/worksonmymachine
+    merging jay commit
+
+[33mcommit 7a725247d72f531fe673c7c50e5db6625f94a361[m
+Author: mugenkyou <sachinskyte@gmail.com>
+Date:   Sun Apr 26 08:13:33 2026 +0530
+
+    update
+
+[33mcommit 2d88b3de29e2501f5105349838b99bd386702610[m
+Author: JAY6969-SMILE <1mj23ae027@mvjce.edu.in>
+Date:   Sun Apr 26 08:07:43 2026 +0530
+
+    docs: add GRPO loss + reward curves for Qwen3-1.7B and link Kaggle notebook
+    
+    - Drop in docs/loss_curve_grpo_qwen3.png and docs/reward_curve_grpo_qwen3.png
+      generated from the Kaggle GRPO run.
+    - Embed both curves inline in README.md under the Training section so the
+      hackathon submission shows training evidence directly in the repo.
+    - Replace the placeholder Training Notebook link with the live Kaggle URL.
+    - Update docs/VISUALIZATION_GUIDE.md to reference the new filenames and
+      document the loss curve alongside the reward curve.
+    - Remove the now-stale docs/reward_curve_grpo.png.
+    
+    Made-with: Cursor
+
+[33mcommit aa8722d6189d65fb4ba737b3a472e4ee3ca9824c[m
+Author: mugenkyou <sachinskyte@gmail.com>
+Date:   Sun Apr 26 03:00:35 2026 +0530
+
+    connected
+
+[33mcommit 3b8772da69f8935907ee37657a8e99baece3dc2e[m
+Author: JAY6969-SMILE <1mj23ae027@mvjce.edu.in>
+Date:   Sun Apr 26 02:15:54 2026 +0530
+
+    quicik=start
+
+[33mcommit ddfe8202d41805891ef414f66ccd057fa04ff9bc[m
+Author: JAY6969-SMILE <1mj23ae027@mvjce.edu.in>
+Date:   Sun Apr 26 02:10:14 2026 +0530
+
+    quicik=start
+
+[33mcommit a42fe81d0657cb3d83c98a838013be155b95dddb[m
+Author: JAY6969-SMILE <1mj23ae027@mvjce.edu.in>
+Date:   Sun Apr 26 01:14:42 2026 +0530
+
+    Clean repo bloat and add LLM recovery system
+    
+    - Untrack visualization/frontend/node_modules (1,954 files); regenerate
+      via npm install. Stop committing the 2.6GB CUDA torch wheel; install via
+      the documented pip command instead.
+    - .gitignore: add wheels/, node_modules/, *.whl; fix broken Thumbs.db line.
+    - Backend (visualization/backend/server.py): hybrid GRPO+heuristic policy
+      with FIFO active-fault queue so multiple simultaneous injections all
+      get recovered; UTF-8 stdout for Windows console.
+    - New helpers: requirements.txt, server/run.py launcher, server/titan_api.py,
+      scripts/verify_recovery.py and scripts/test_queue_direct.py.
+    - Frontend (main.ts) trusts backend's faults_recovered as source of truth.
+    - Drop legacy models/grpo_titan_final/ in favour of grpo_qwen3_final/.
+    
+    Made-with: Cursor
+
+[33mcommit 8824e85b75a2a9ff18d3986a26ca361ed27cdcf3[m
+Author: JAY6969-SMILE <1mj23ae027@mvjce.edu.in>
+Date:   Sat Apr 25 21:09:44 2026 +0530
+
+    fix diagnostic agent output truncation
+
+[33mcommit d5c2ae2c4398a5f75ae678624fcb8cd59dd3ecc3[m
+Author: JAY6969-SMILE <1mj23ae027@mvjce.edu.in>
+Date:   Sat Apr 25 20:10:14 2026 +0530
+
+    add agent files, reward curve, demo output, results
+
+[33mcommit 0794541614b335123b68b15667614cd2ddf2151d[m
+Author: mugenkyou <sachinskyte@gmail.com>
+Date:   Sat Apr 25 15:21:53 2026 +0530
+
+    visualization
+
+[33mcommit 80a915e99c10f30ad730ce152535736b961a9a16[m
+Merge: 1811bff a84bee7
+Author: laharib445 <laharib445@gmail.com>
+Date:   Sat Apr 25 15:14:13 2026 +0530
+
+    Merge branch 'main' of https://github.com/mugenkyou/worksonmymachine
+
+[33mcommit 1811bff38274e973bf2ac5794f675d356f7dbf68[m
+Author: laharib445 <laharib445@gmail.com>
+Date:   Sat Apr 25 15:01:33 2026 +0530
+
+    Add TITAN agent modules, usage examples, and import fixes
+
+[33mcommit a84bee7c8e0e77db410fbba95d5df0bcf64d8851[m
+Author: JAY6969-SMILE <1mj23ae027@mvjce.edu.in>
+Date:   Sat Apr 25 14:12:53 2026 +0530
+
+    update docs
+
+[33mcommit c7aebae24f48e2b446f1d74448085ba6c067c18b[m
+Author: JAY6969-SMILE <1mj23ae027@mvjce.edu.in>
+Date:   Fri Apr 24 17:27:53 2026 +0530
+
+    updates
+
+[33mcommit e3ecd34c06c416444f2c594992599d57fbc99364[m
+Author: JAY6969-SMILE <1mj23ae027@mvjce.edu.in>
+Date:   Fri Apr 24 16:57:47 2026 +0530
+
+    Add GRPO trained Qwen2.5 model and reward curve
+
+[33mcommit 4b414d9d35d9fd413e8c884e096de507e6bcc49a[m
+Author: JAY6969-SMILE <1mj23ae027@mvjce.edu.in>
+Date:   Fri Apr 24 13:48:00 2026 +0530
+
+    NEW TYPE  WHAT NEEDED TO SUBMIT
+
+[33mcommit 76829b4505a5d66363d4f733c1583c50c72d45c2[m
+Author: JAY6969-SMILE <1mj23ae027@mvjce.edu.in>
+Date:   Thu Apr 23 16:57:24 2026 +0530
+
+    READY FOR TRAINING
+
+[33mcommit 11d22eca0a71ba88afe3d4be63ae108e26b8fa2b[m
+Author: JAY6969-SMILE <1mj23ae027@mvjce.edu.in>
+Date:   Thu Apr 23 16:21:26 2026 +0530
+
+    update
+
+[33mcommit fb5fca7788609ae2da9b78cef4cd021e4d7656b2

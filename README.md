@@ -1,12 +1,11 @@
-# TITAN Env (worksonmymachine)
+# TITAN Env
 
 Autonomous satellite fault recovery under radiation stress, with an OpenEnv-compatible environment, GRPO-trained Qwen3 adapter support, and a live 3D dashboard.
 
 ## Project Links
 
-- Hugging Face Space: https://huggingface.co/spaces/mugenkyou/worksonmymachine/blob/main/BLOG.md
-- YouTube Demo: https://youtu.be/PIixwA7NSxk
-- Blog: https://huggingface.co/spaces/mugenkyou/worksonmymachine/blob/main/BLOG.md
+- Blog: [blog.md](blog.md)
+- YouTube Demo: https://youtu.be/AEybAPoSk48
 
 ## What This Repository Includes
 
